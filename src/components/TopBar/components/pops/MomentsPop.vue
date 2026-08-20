@@ -223,14 +223,7 @@ defineExpose({
           />
           <section flex="~ row-reverse gap-4 items-start">
             <div class="bew-top-bar-media-copy">
-              <h3
-                :title="moment.title"
-                class="bew-top-bar-media-title bew-top-bar-media-title--emphasis"
-              >
-                {{ moment.title }}
-              </h3>
-
-              <div flex="~ items-center gap-2" min-w-0 m="t-2">
+              <div flex="~ items-center gap-2" min-w-0>
                 <ALink
                   :href="moment.authorJumpUrl"
                   type="topBar"
@@ -247,11 +240,7 @@ defineExpose({
                   >
                 </ALink>
 
-                <div
-                  class="bew-top-bar-media-author--compact"
-                  min-w-0
-                  flex-1
-                >
+                <div min-w-0 flex-1 truncate>
                   <!-- 联合投稿显示多个作者 -->
                   <template v-if="moment.isCollaborative && moment.authors">
                     <template v-for="(author, idx) in moment.authors" :key="author.jump_url">
@@ -277,33 +266,41 @@ defineExpose({
                     {{ moment.author }}
                   </ALink>
                 </div>
+              </div>
 
+              <h3
+                :title="moment.title"
+                class="bew-top-bar-media-title"
+                m="t-2"
+              >
+                {{ moment.title }}
+              </h3>
+              <div
+                class="bew-top-bar-media-meta"
+                text="$bew-text-2"
+                m="t-1"
+              >
+                <!-- publish time -->
+                <div v-if="selectedMomentTab.type !== 'live'">
+                  {{ moment.pubTime }}
+                </div>
+
+                <!-- Live -->
                 <div
-                  class="bew-top-bar-media-meta"
-                  shrink-0
-                  whitespace-nowrap
+                  v-else
+                  text="$bew-theme-color"
+                  font="semibold"
+                  flex="~"
+                  items="center"
                 >
-                  <!-- publish time -->
-                  <span v-if="selectedMomentTab.type !== 'live'" text="$bew-text-2">
-                    {{ moment.pubTime }}
-                  </span>
-
-                  <!-- Live -->
-                  <span
-                    v-else
-                    text="$bew-theme-color"
-                    font="semibold"
-                    flex="~ items-center"
-                  >
-                    <span i-fluent:live-24-filled m="r-1" />
-                    {{ $t('topbar.moments_dropdown.live_status') }}
-                  </span>
+                  <div i-fluent:live-24-filled m="r-2" />
+                  {{ $t('topbar.moments_dropdown.live_status') }}
                 </div>
               </div>
             </div>
 
             <div
-              class="bew-top-bar-media-column bew-top-bar-media-column--narrow moments-pop__cover"
+              class="bew-top-bar-media-column moments-pop__cover"
               bg="$bew-skeleton"
               pos="relative"
             >
@@ -312,7 +309,7 @@ defineExpose({
                 flex="~ items-center justify-center"
               >
                 <img
-                  :src="`${moment.cover}@240w_135h_1c`"
+                  :src="`${moment.cover}@320w_180h_1c`"
                   :alt="moment.title"
                 >
               </div>
