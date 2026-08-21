@@ -461,6 +461,7 @@ export interface Settings {
   autoExitFullscreenOnEnd: boolean // 全屏播放完毕后自动退出
   autoExitFullscreenExcludeAutoPlay: boolean // 全屏自动退出时排除自动连播
   showVerticalVideoZoomButton: boolean // 显示竖屏视频放大按钮
+  showBewlyWidescreenButton: boolean // 显示播放器 Bewly 宽屏按钮
   showVideoScreenshotButton: boolean // 显示播放器截图按钮
 
   // 自动连播总开关
@@ -590,6 +591,7 @@ export const originalSettings: Settings = {
     { key: 'notifications', visible: true, badgeType: 'number' },
     { key: 'pinnedChannels', visible: true, badgeType: 'none' },
     { key: 'avatar', visible: true, badgeType: 'none' },
+    { key: 'topBarSwitcher', visible: true, badgeType: 'none' },
   ],
   topBarPinnedChannels: [],
   openNotificationsPageAsDrawer: true,
@@ -759,6 +761,7 @@ export const originalSettings: Settings = {
   autoExitFullscreenOnEnd: false, // 全屏播放完毕后自动退出，默认关闭
   autoExitFullscreenExcludeAutoPlay: false, // 全屏自动退出时排除自动连播，默认关闭
   showVerticalVideoZoomButton: true, // 默认显示竖屏视频放大按钮
+  showBewlyWidescreenButton: true, // 默认显示播放器 Bewly 宽屏按钮
   showVideoScreenshotButton: true, // 默认显示播放器截图按钮
 
   // 自动连播总开关
@@ -898,7 +901,6 @@ watch(
           ? 'frostedGlass'
           : originalSettings.topBarStyle
     }
-    // 已移除的五层渐进雾化，回落到默认白雾/阴影。
     if (record.topBarStyle === 'progressiveFog')
       record.topBarStyle = 'default'
     if (!validTopBarStyles.includes(record.topBarStyle))
@@ -1159,12 +1161,6 @@ export type WatchLaterLayout = 'list' | 'grid'
 export const watchLaterLayout = useStorageLocal<WatchLaterLayout>(
   'watchLaterLayout',
   'list',
-  { mergeDefaults: true, writeDefaults: false },
-)
-
-export const gridColumns = useStorageLocal<GridColumnsConfig>(
-  'gridColumns',
-  { ...defaultGridColumns },
   { mergeDefaults: true, writeDefaults: false },
 )
 

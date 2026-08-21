@@ -1,3 +1,5 @@
+import { watch } from 'vue'
+
 import { settings } from '~/logic'
 import { applyBewlyWidescreen, ensureNativePlayerModeGuard, exitBewlyWidescreen, isBewlyWidescreenActive, showBewlyWidescreenSwitchHint } from '~/utils/bewlyWidescreen'
 import { i18n } from '~/utils/i18n'
@@ -63,7 +65,7 @@ function isControlUnavailable() {
 }
 
 function shouldManageControl() {
-  return isVideoOrBangumiPage()
+  return settings.value.showBewlyWidescreenButton && isVideoOrBangumiPage()
 }
 
 function updateControlState(button = controlContainer) {
@@ -122,6 +124,10 @@ function createControlContainer(): HTMLElement {
   icon.appendChild(iconWrapper)
   container.append(icon, tooltip)
 
+  // 鼠标点击不聚焦按钮：否则焦点残留，之后按空格/回车会再次触发切换
+  container.addEventListener('mousedown', (event) => {
+    event.preventDefault()
+  })
   container.addEventListener('click', (event) => {
     event.preventDefault()
     event.stopPropagation()
@@ -366,6 +372,16 @@ export function initBewlyWidescreenControl() {
   hasInitialized = true
   ensureNativePlayerModeGuard()
   setupPageObserver()
+  watch(
+    () => settings.value.showBewlyWidescreenButton,
+    (enabled) => {
+      if (enabled)
+        restartControlDiscovery()
+      else
+        stopManagingControl()
+    },
+    { immediate: true },
+  )
 
   const handlePageLifecycleChange = () => restartControlDiscovery()
   window.addEventListener('pushstate', handlePageLifecycleChange)
@@ -376,9 +392,7 @@ export function initBewlyWidescreenControl() {
   window.addEventListener('fullscreenchange', () => updateControlState())
   window.addEventListener('webkitfullscreenchange', () => updateControlState())
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible')
+    if (document.visibilityState === 'visible' && settings.value.showBewlyWidescreenButton)
       restartControlDiscovery()
   })
-
-  restartControlDiscovery()
 }

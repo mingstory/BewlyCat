@@ -27,6 +27,12 @@ const bewlyPageByTopBarItem: Partial<Record<string, AppPage>> = {
   watchLater: AppPage.WatchLater,
 }
 
+type TopBarPopupKey = keyof ReturnType<typeof useTopBarStore>['popupVisible']
+
+function isTopBarPopupKey(key: string, popupVisible: ReturnType<typeof useTopBarStore>['popupVisible']): key is TopBarPopupKey {
+  return key in popupVisible
+}
+
 function getConfiguredPageUrl(page: AppPage): string {
   return `https://www.bilibili.com/?page=${page}`
 }
@@ -34,8 +40,8 @@ function getConfiguredPageUrl(page: AppPage): string {
 export function useTopBarInteraction() {
   const topBarStore = useTopBarStore()
   const { closeAllPopups } = topBarStore
-  const topBarItemElements: Record<string, Ref<HTMLElement | undefined>> = {}
-  const topBarTransformers = reactive({})
+  const topBarItemElements: Partial<Record<TopBarPopupKey, Ref<HTMLElement | undefined>>> = {}
+  const topBarTransformers = reactive<Partial<Record<TopBarPopupKey, Ref<any>>>>({})
 
   const isMouseOverPopup = reactive<Record<string, boolean>>({})
 
@@ -103,9 +109,6 @@ export function useTopBarInteraction() {
       && !!settings.value.searchPageWallpaper
   })
 
-  // 顶栏底下压着底图时遮罩要留通透让图透出来；没有底图时遮罩色与页面底色一致，可以铺实。
-  const hasTopBarBackdrop = computed((): boolean => hasPageBackdrop.value || hasWallpaperBackdrop.value)
-
   // 遮罩是深色时图标才需要强制转白：页面底图恒用阴影，壁纸则只在暗色模式下才是黑雾。
   const forceWhiteIcon = computed((): boolean =>
     hasPageBackdrop.value || (hasWallpaperBackdrop.value && isDark.value))
@@ -142,7 +145,7 @@ export function useTopBarInteraction() {
   })
 
   // 设置顶栏项悬停事件
-  function setupTopBarItemHoverEvent(key: string) {
+  function setupTopBarItemHoverEvent(key: TopBarPopupKey) {
     const element = useDelayedHover({
       enterDelay: 320,
       leaveDelay: 320,
@@ -165,7 +168,7 @@ export function useTopBarInteraction() {
   }
 
   // 设置顶栏项变换器
-  function setupTopBarItemTransformer(key: string, targetRef?: any) {
+  function setupTopBarItemTransformer(key: TopBarPopupKey, targetRef?: Ref<any>) {
     const trigger = topBarItemElements[key]
     if (!trigger)
       return
@@ -234,6 +237,9 @@ export function useTopBarInteraction() {
     if (handledClickEvents.has(event))
       return
 
+    if (!isTopBarPopupKey(key, topBarStore.popupVisible))
+      return
+
     if (settings.value.touchScreenOptimization) {
       handledClickEvents.add(event)
       event.preventDefault()
@@ -285,7 +291,7 @@ export function useTopBarInteraction() {
     handleNotificationsItemClick,
     getTopBarItemHref,
     forceWhiteIcon,
-    hasTopBarBackdrop,
+    hasPageBackdrop,
     showSearchBar,
   }
 }

@@ -1,7 +1,13 @@
 import browser from 'webextension-polyfill'
 
+import { i18n } from '~/utils/i18n'
+
 import { injectCSS } from './main'
 import { getVideoElement } from './player'
+
+function t(key: string, params: Record<string, unknown> = {}) {
+  return String(i18n.global.t(key, params))
+}
 
 type BewlyWidescreenTab = 'comment' | 'danmaku' | 'playlist'
 type BewlyWidescreenSidebarMode = 'fit' | 'narrow'
@@ -68,6 +74,7 @@ const SIDEBAR_REFRESH_DELAY = 800
 const SIDEBAR_TOGGLE_IDLE_DELAY = 1000
 const BILIBILI_ACTION_ANIMATION_HUE = 196
 const COMMENT_ROOT_ID_SELECTOR = '#comment-module, #comment-body, #commentapp'
+const COMMENT_TIME_SELECTOR = '.reply-time, .sub-reply-time, .reply-time-location'
 const COMMENT_NESTED_UI_SELECTOR = '.reply-item, .sub-reply-item, bili-comment-renderer'
 // Light-DOM markers only. Modern bili-comments mounts most UI in shadow roots,
 // so readiness must not require these descendants to exist.
@@ -492,8 +499,8 @@ function setSidebarMode(nextMode: BewlyWidescreenSidebarMode) {
     ? (isFit ? '‹' : '›')
     : (isFit ? '›' : '‹')
   state.sidebarToggleButton.title = isFit
-    ? (isRight ? '显示窄右栏' : '显示窄左栏')
-    : (isRight ? '收起右栏' : '收起左栏')
+    ? (isRight ? t('widescreen.show_narrow_right') : t('widescreen.show_narrow_left'))
+    : (isRight ? t('widescreen.collapse_right') : t('widescreen.collapse_left'))
   state.sidebarToggleButton.setAttribute('aria-label', state.sidebarToggleButton.title)
   updateSidebarToggleState()
   schedulePlayerResizeSync(state)
@@ -523,8 +530,8 @@ function createSidebarToolbar() {
   const closeButton = document.createElement('button')
   closeButton.type = 'button'
   closeButton.className = 'bewly-widescreen-close'
-  closeButton.textContent = '退出'
-  closeButton.title = '退出 Bewly 宽屏'
+  closeButton.textContent = t('widescreen.exit')
+  closeButton.title = t('widescreen.exit_title')
   closeButton.setAttribute('aria-label', closeButton.title)
   closeButton.addEventListener('click', () => exitBewlyWidescreen())
 
@@ -773,13 +780,13 @@ function showWidescreenLoading() {
   }
 
   const label = document.createElement('span')
-  label.textContent = '正在加载宽屏模式…'
+  label.textContent = t('widescreen.loading')
   content.appendChild(label)
 
   const exitButton = document.createElement('button')
   exitButton.type = 'button'
   exitButton.className = 'bewly-widescreen-loading-exit'
-  exitButton.textContent = '退出遮罩'
+  exitButton.textContent = t('widescreen.exit_overlay')
   exitButton.hidden = true
   exitButton.addEventListener('click', () => exitBewlyWidescreen())
 
@@ -993,9 +1000,9 @@ function createRoot(sidebarPosition: 'left' | 'right' = 'right') {
   tablist.setAttribute('role', 'tablist')
 
   const tabButtons = {
-    comment: createTabButton('comment', '评论'),
-    danmaku: createTabButton('danmaku', '弹幕'),
-    playlist: createTabButton('playlist', '选集'),
+    comment: createTabButton('comment', t('widescreen.comments')),
+    danmaku: createTabButton('danmaku', t('widescreen.danmaku')),
+    playlist: createTabButton('playlist', t('widescreen.episodes')),
   }
   tablist.append(tabButtons.comment, tabButtons.danmaku, tabButtons.playlist)
 
@@ -2258,18 +2265,21 @@ function rgbToHsl({ r, g, b }: { r: number, g: number, b: number }) {
   return { hue: hue * 60, saturation, lightness }
 }
 
+let cssColorProbe: HTMLSpanElement | null = null
+
 function resolveCssColor(value: string) {
   if (!value)
     return null
 
-  const probe = document.createElement('span')
-  probe.style.position = 'fixed'
-  probe.style.pointerEvents = 'none'
-  probe.style.opacity = '0'
-  probe.style.color = value
-  document.body.appendChild(probe)
-  const resolved = getComputedStyle(probe).color
-  probe.remove()
+  if (!cssColorProbe) {
+    cssColorProbe = document.createElement('span')
+    cssColorProbe.style.position = 'fixed'
+    cssColorProbe.style.pointerEvents = 'none'
+    cssColorProbe.style.opacity = '0'
+    document.body.appendChild(cssColorProbe)
+  }
+  cssColorProbe.style.color = value
+  const resolved = getComputedStyle(cssColorProbe).color
 
   return parseRgbColor(resolved)
 }
@@ -2428,8 +2438,11 @@ function setupSidebarToggleAutoHide(currentState: BewlyWidescreenState) {
 }
 
 function setupDomRefreshObserver(currentState: BewlyWidescreenState) {
-  currentState.mutationObserver = new MutationObserver(() => {
+  currentState.mutationObserver = new MutationObserver((mutations) => {
     if (!state || state !== currentState)
+      return
+
+    if (mutations.every(mutation => currentState.root.contains(mutation.target)))
       return
 
     scheduleSidebarRefresh()
@@ -2508,7 +2521,9 @@ function syncDescription(currentState: BewlyWidescreenState) {
 
   descriptionSlot.classList.toggle('is-empty', !hasContent)
   toggleButton.hidden = !hasContent || !canExpand
-  toggleButton.textContent = currentState.descriptionExpanded ? '收起' : '展开更多'
+  const toggleLabel = currentState.descriptionExpanded ? t('widescreen.collapse') : t('widescreen.expand_more')
+  if (toggleButton.textContent !== toggleLabel)
+    toggleButton.textContent = toggleLabel
   toggleButton.setAttribute('aria-expanded', String(canExpand && currentState.descriptionExpanded))
   descriptionSlot.classList.toggle('is-collapsed', canExpand && !currentState.descriptionExpanded)
   descriptionSlot.classList.toggle('is-expanded', canExpand && currentState.descriptionExpanded)
@@ -2591,7 +2606,7 @@ function fillSidebar(currentState: BewlyWidescreenState) {
   moveDanmakuInput(currentState)
   const commentResult = moveCommentRoot(currentState.panels.comment, currentState.movedNodes)
   if (!commentResult.found) {
-    ensureEmptyPanel(currentState.panels.comment, '评论区加载中')
+    ensureEmptyPanel(currentState.panels.comment, t('widescreen.comments_loading'))
   }
   else {
     clearEmptyPanel(currentState.panels.comment)
@@ -2600,7 +2615,7 @@ function fillSidebar(currentState: BewlyWidescreenState) {
 
   const danmakuResult = moveOrReplaceNode(selectors.danmaku, currentState.panels.danmaku, currentState.movedNodes)
   if (!danmakuResult.found)
-    ensureEmptyPanel(currentState.panels.danmaku, '弹幕列表加载中')
+    ensureEmptyPanel(currentState.panels.danmaku, t('widescreen.danmaku_loading'))
   else
     clearEmptyPanel(currentState.panels.danmaku)
 
@@ -2633,9 +2648,11 @@ function fillSidebar(currentState: BewlyWidescreenState) {
   syncEpisodeSectionMarker(currentState.panels.playlist, currentState.movedNodes)
   const hasPlaylist = !!(playlistMoved || (existingPlaylist && !shouldReplacePlaylist))
   const hasRecommend = !!(existingRecommend || recommendMoved)
-  currentState.tabButtons.playlist.textContent = hasPlaylist ? '选集' : '推荐'
+  const playlistLabel = hasPlaylist ? t('widescreen.episodes') : t('widescreen.recommendations')
+  if (currentState.tabButtons.playlist.textContent !== playlistLabel)
+    currentState.tabButtons.playlist.textContent = playlistLabel
   if (!hasPlaylist && !hasRecommend)
-    ensureEmptyPanel(currentState.panels.playlist, '列表加载中')
+    ensureEmptyPanel(currentState.panels.playlist, t('widescreen.list_loading'))
   else
     clearEmptyPanel(currentState.panels.playlist)
 }
@@ -2652,20 +2669,19 @@ function ensureEmptyPanel(panel: HTMLElement, label: string) {
 }
 
 function shortenCommentTimes(panel: HTMLElement) {
-  const walker = document.createTreeWalker(panel, NodeFilter.SHOW_TEXT)
-  const textNodes: Text[] = []
+  for (const timeElement of Array.from(panel.querySelectorAll<HTMLElement>(COMMENT_TIME_SELECTOR))) {
+    const walker = document.createTreeWalker(timeElement, NodeFilter.SHOW_TEXT)
+    while (walker.nextNode()) {
+      const textNode = walker.currentNode
+      if (!(textNode instanceof Text))
+        continue
 
-  while (walker.nextNode()) {
-    if (walker.currentNode instanceof Text)
-      textNodes.push(walker.currentNode)
-  }
+      const value = textNode.nodeValue
+      if (!value || !/\d{4}-\d{2}-\d{2}/.test(value))
+        continue
 
-  for (const textNode of textNodes) {
-    const value = textNode.nodeValue
-    if (!value || !/\d{4}-\d{2}-\d{2}/.test(value))
-      continue
-
-    textNode.nodeValue = value.replace(/\b\d{4}-(\d{2})-(\d{2})\b/g, '$1-$2')
+      textNode.nodeValue = value.replace(/\b\d{4}-(\d{2})-(\d{2})\b/g, '$1-$2')
+    }
   }
 }
 

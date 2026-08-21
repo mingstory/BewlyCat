@@ -10,11 +10,14 @@ import { VideoPageTopBarConfig } from '~/enums/appEnums'
 import { settings } from '~/logic'
 import { useTopBarStore } from '~/stores/topBarStore'
 import { isBewlyWidescreenActive } from '~/utils/bewlyWidescreen'
+import { findLeafActiveElement } from '~/utils/element'
 import { isHomePage, isUserSpacePage, isVideoOrBangumiPage } from '~/utils/main'
 import emitter from '~/utils/mitt'
+import { isComponentVisible } from '~/utils/topBarBadge'
 
 import NotificationsDrawer from './components/NotificationsDrawer.vue'
 import TopBarHeader from './components/TopBarHeader.vue'
+import TopBarModeSwitcher from './components/TopBarModeSwitcher.vue'
 import { useTopBarInteraction } from './composables/useTopBarInteraction'
 
 const { reachTop } = useBewlyApp()
@@ -615,12 +618,21 @@ onUnmounted(() => {
 })
 
 // 快捷键
-onKeyStroke('/', () => {
+onKeyStroke('/', (event: KeyboardEvent) => {
+  const target = event.target as HTMLElement | null
+  if (target && (['INPUT', 'TEXTAREA'].includes(target.tagName) || target.isContentEditable))
+    return
+
+  const activeElement = findLeafActiveElement(document) as HTMLElement | undefined
+  if (activeElement && (['INPUT', 'TEXTAREA'].includes(activeElement.tagName) || activeElement.isContentEditable))
+    return
+
+  event.preventDefault()
   toggleTopBarVisible(true)
 })
 
 onKeyStroke('Escape', (event: KeyboardEvent) => {
-  if (!settings.value.touchScreenOptimization || !hasActivePopup.value)
+  if (!hasActivePopup.value)
     return
 
   event.preventDefault()
@@ -649,6 +661,11 @@ const VideoPageTopBarConfigEnum = VideoPageTopBarConfig
         v-if="topBarStore.showTopBar || isLayoutEditing"
         ref="headerTarget"
         class="top-bar"
+        data-layout-edit-target="topbar-component"
+        data-layout-edit-direct
+        data-layout-settings-menu="BewlyComponents"
+        data-layout-settings-page="topbar"
+        data-layout-settings-title-key="settings.topbar_visibility"
         w="full"
         :class="{
           'hide': hideTopBar && !isLayoutEditing,
@@ -671,6 +688,13 @@ const VideoPageTopBarConfigEnum = VideoPageTopBarConfig
         </KeepAlive>
       </header>
     </Transition>
+
+    <TopBarModeSwitcher
+      v-if="settings.enableTopBar
+        && settings.useOriginalBilibiliTopBar
+        && isComponentVisible('topBarSwitcher')"
+      native
+    />
   </div>
 </template>
 
@@ -688,6 +712,7 @@ const VideoPageTopBarConfigEnum = VideoPageTopBarConfig
   right: 0;
   z-index: 999;
   position: fixed;
+  min-height: var(--bew-top-bar-height);
   transition:
     opacity var(--bew-duration-moderate) var(--bew-ease-standard),
     transform var(--bew-duration-moderate) var(--bew-ease-standard);

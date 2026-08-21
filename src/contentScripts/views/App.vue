@@ -6,9 +6,10 @@ import { useI18n } from 'vue-i18n'
 
 import Button from '~/components/Button.vue'
 import Icon from '~/components/Icon.vue'
+import Radio from '~/components/Radio.vue'
 import type { BewlyAppProvider, SettingsNavigationTarget } from '~/composables/useAppProvider'
 import { DrawerType, UndoForwardState } from '~/composables/useAppProvider'
-import type { ConfirmDialogOptions } from '~/composables/useConfirmDialog'
+import type { ConfirmDialogOptions, ConfirmDialogToggleField } from '~/composables/useConfirmDialog'
 import { confirmDialogKey } from '~/composables/useConfirmDialog'
 import { useDark } from '~/composables/useDark'
 import { useLayoutEditMode } from '~/composables/useLayoutEditMode'
@@ -23,7 +24,7 @@ import { useTopBarStore } from '~/stores/topBarStore'
 import { setOriginalBilibiliTopBarScrolled } from '~/utils/bilibiliTopBar'
 import { isHomePage, isInIframe, isNotificationPage, isSearchResultsPage, isVideoOrBangumiPage, openLinkToNewTab, queryDomUntilFound, scrollToTop } from '~/utils/main'
 import emitter from '~/utils/mitt'
-import { applyPendingSettingsMigrations, formatSettingsMigrationConfirmMessage, hasPendingSettingsMigrations } from '~/utils/settingsMigration'
+import { applyPendingSettingsMigrations, formatSettingsMigrationConfirmMessage, getPendingSettingsMigrationChoices, hasPendingSettingsMigrations } from '~/utils/settingsMigration'
 
 import { setupNecessarySettingsWatchers } from './necessarySettingsWatchers'
 
@@ -70,6 +71,7 @@ interface ConfirmDialogRequest {
   message: string
   title?: string
   confirmLabel?: string
+  toggleFields?: ConfirmDialogToggleField[]
   resolve: (confirmed: boolean) => void
   settled: boolean
 }
@@ -105,6 +107,7 @@ function showConfirmDialog(message: string, options: ConfirmDialogOptions = {}):
       message,
       title: options.title,
       confirmLabel: options.confirmLabel,
+      toggleFields: options.toggleFields,
       resolve,
       settled: false,
     }
@@ -149,6 +152,9 @@ onKeyStroke('Escape', (e: KeyboardEvent) => {
 onKeyStroke('Enter', (e: KeyboardEvent) => {
   if (!activeConfirmDialog.value)
     return
+  const target = e.target as HTMLElement | null
+  if (target?.closest('.bew-confirm-dialog__field'))
+    return
   e.preventDefault()
   e.stopPropagation()
   finishConfirmDialog(true)
@@ -179,16 +185,26 @@ async function promptSettingsMigrationIfNeeded() {
   if (!message)
     return
 
+  const toggleFields = getPendingSettingsMigrationChoices(record).map(choice => ({
+    id: choice.id,
+    label: String(t(choice.titleKey)),
+    value: choice.value,
+    enabledLabel: String(t('settings.chk_box.show')),
+    disabledLabel: String(t('settings.chk_box.hidden')),
+  }))
   const confirmed = await showConfirmDialog(message, {
     title: t('settings.maintenance.migrate_legacy_title'),
     confirmLabel: t('settings.maintenance.migrate_legacy_action'),
+    toggleFields,
   })
   if (!confirmed) {
     sessionStorage.setItem(SETTINGS_MIGRATION_PROMPT_DISMISSED_KEY, '1')
     return
   }
 
-  applyPendingSettingsMigrations(record)
+  applyPendingSettingsMigrations(record, Object.fromEntries(
+    toggleFields.map(field => [field.id, field.value]),
+  ))
 }
 
 // Get the 'page' query parameter from the URL
@@ -888,7 +904,7 @@ function openLayoutEditTopBarModeSettings() {
   openSettings({
     menu: 'BewlyComponents',
     secondaryPage: 'topbar',
-    targetTitleKey: 'settings.use_original_bilibili_topbar',
+    targetTitleKey: 'topbar.top_bar_switcher',
   })
 }
 
@@ -1024,7 +1040,14 @@ function setActiveDrawer(drawer: DrawerType) {
 const hideUIForIframePhotoViewer = ref<boolean>(false)
 
 const iframePageRef = ref()
-useEventListener(window, 'message', ({ data }) => {
+useEventListener(window, 'message', ({ data, source }) => {
+  if (typeof data !== 'string')
+    return
+
+  const iframe = iframePageRef.value?.$el?.querySelector('iframe')
+  if (!iframe || source !== iframe.contentWindow)
+    return
+
   switch (data) {
     case IFRAME_PAGE_SWITCH_BEWLY:
       {
@@ -1060,6 +1083,9 @@ useEventListener(window, 'message', ({ data, source }) => {
 useEventListener(window, 'message', ({ data, source }) => {
   // 只处理来自父窗口的消息
   if (source !== window.parent)
+    return
+
+  if (!data || typeof data !== 'object' || Array.isArray(data))
     return
 
   const { type, isDark, darkModeBaseColor } = data
@@ -2025,6 +2051,22 @@ if (settings.value.cleanUrlArgument) {
           <p class="bew-confirm-dialog__message">
             {{ activeConfirmDialog.message }}
           </p>
+          <div
+            v-if="activeConfirmDialog.toggleFields?.length"
+            class="bew-confirm-dialog__fields"
+          >
+            <div
+              v-for="field in activeConfirmDialog.toggleFields"
+              :key="field.id"
+              class="bew-confirm-dialog__field"
+            >
+              <span class="bew-confirm-dialog__field-label">{{ field.label }}</span>
+              <Radio
+                v-model="field.value"
+                :label="field.value ? field.enabledLabel : field.disabledLabel"
+              />
+            </div>
+          </div>
         </div>
         <footer class="bew-confirm-dialog__footer">
           <Button type="tertiary" @click="finishConfirmDialog(true)">
@@ -2177,6 +2219,12 @@ if (settings.value.cleanUrlArgument) {
   border-radius: var(--bew-interactive-radius);
 }
 
+.top-bar-host--editing :deep([data-layout-edit-target="topbar-component"][data-layout-edit-active="true"]) {
+  outline: 1px solid var(--bew-theme-color);
+  outline-offset: -1px;
+  box-shadow: inset 0 0 0 1px var(--bew-theme-color-20);
+}
+
 .dock-sidebar-host--editing :deep([data-layout-edit-target]:not([data-layout-edit-active="true"])),
 .top-bar-host--editing :deep([data-layout-edit-target]:not([data-layout-edit-active="true"])) {
   opacity: 0.12 !important;
@@ -2262,7 +2310,10 @@ if (settings.value.cleanUrlArgument) {
 }
 
 .bew-confirm-dialog__body {
+  max-height: min(60vh, 480px);
   padding: var(--bew-space-2) var(--bew-space-8) var(--bew-space-2);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .bew-confirm-dialog__message {
@@ -2272,6 +2323,32 @@ if (settings.value.cleanUrlArgument) {
   font-weight: var(--bew-font-weight-regular);
   line-height: var(--bew-line-height-body);
   white-space: pre-line;
+}
+
+.bew-confirm-dialog__fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bew-space-2);
+  margin-top: var(--bew-space-4);
+}
+
+.bew-confirm-dialog__field {
+  display: flex;
+  min-height: 48px;
+  gap: var(--bew-space-4);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--bew-space-2) var(--bew-space-3);
+  background: var(--bew-fill-1);
+  border: 1px solid var(--bew-border-color);
+  border-radius: var(--bew-interactive-radius);
+}
+
+.bew-confirm-dialog__field-label {
+  color: var(--bew-text-1);
+  font-size: var(--bew-font-size-control);
+  font-weight: var(--bew-font-weight-semibold);
+  line-height: var(--bew-line-height-control);
 }
 
 .bew-confirm-dialog__footer {

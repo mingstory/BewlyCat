@@ -18,7 +18,7 @@ const props = defineProps<{
   isDark: boolean
 }>()
 
-const { forceWhiteIcon, hasTopBarBackdrop, handleNotificationsItemClick } = useTopBarInteraction()
+const { forceWhiteIcon, hasPageBackdrop, handleNotificationsItemClick } = useTopBarInteraction()
 const { isLayoutEditing } = useLayoutEditMode()
 const { activatedPage } = useBewlyApp()
 const isNarrowLayout = useMediaQuery('(max-width: 767px)')
@@ -44,30 +44,30 @@ function smoothFade(color: (alphaPercent: number) => string, peak: number) {
   return `linear-gradient(to bottom, ${stops.join(', ')})`
 }
 
-const OVERLAY_MASK = `linear-gradient(to bottom, rgb(0 0 0 / 100%) 0%, ${
-  fadeStops(100)
-    .map(([position, alpha]) => {
-      const t = +(position / 100).toFixed(4)
-      return `rgb(0 0 0 / ${+alpha.toFixed(2)}%) calc(var(--overlay-mask-plateau) + ${t} * (100% - var(--overlay-mask-plateau)))`
-    })
-    .join(', ')
-})`
+function overlayMask(plateauVar: string) {
+  return `linear-gradient(to bottom, rgb(0 0 0 / 100%) 0%, ${
+    fadeStops(100)
+      .map(([position, alpha]) => {
+        const t = +(position / 100).toFixed(4)
+        return `rgb(0 0 0 / ${+alpha.toFixed(2)}%) calc(var(${plateauVar}) + ${t} * (100% - var(${plateauVar})))`
+      })
+      .join(', ')
+  })`
+}
 
-// 顶栏底下压着底图时滚动后的压深量，两种毛玻璃开关共用同一档。
-// 底图能透出来本身就是想要的效果，遮罩再叠上下方渐变层就已接近不透明，
-// 只需补这一档保证顶栏可读，拉满会把整条顶栏压成纯黑或纯白。
+// 毛玻璃：满强度到主控件下沿（约 55px），收尾落在 64px 顶栏内。
+const FROSTED_OVERLAY_MASK = overlayMask('--overlay-mask-plateau-frosted')
+// 非毛玻璃：平台 48px、收尾 32px；超出顶栏 16px，收尾从下沿往里 16px 起。
+const SOLID_OVERLAY_MASK = overlayMask('--overlay-mask-plateau-solid')
+
 const SCROLLED_SHADE_ALPHA = 0.5
+const GLASS_TINT_ALPHA = 0.1
 
-// 没有底图时遮罩色与页面底色一致，深浅变化不可见，保留实心遮挡压住滚过的内容。
-const SCROLLED_SOLID_OPACITY = 0.9
-
-// 黑雾 60%、白雾与无底图同档 80%，保证可读。
-const fadeGradient = computed(() => forceWhiteIcon.value
+// 雾配方只认「页面自带横幅」：那种底图的亮暗不受主题控制，只能恒用黑雾托住白图标。
+// 不能改认 forceWhiteIcon —— 它在「暗色 + 壁纸」也为真，会让暗色下有无壁纸变成两种配方（#1095）。
+const fadeGradient = computed(() => hasPageBackdrop.value
   ? smoothFade(alpha => `rgb(0 0 0 / ${alpha}%)`, 60)
   : smoothFade(alpha => `color-mix(in oklab, var(--bew-bg), transparent ${+(100 - alpha).toFixed(2)}%)`, 80))
-
-// 纯透明玻璃压在花底图上不够看，补一层薄色把前景托出来。
-const GLASS_TINT_ALPHA = 0.1
 
 // 页面横幅不受主题控制，恒用暗玻璃；其余跟随亮暗。
 const useDarkGlass = computed(() => forceWhiteIcon.value || props.isDark)
@@ -76,31 +76,32 @@ function glassColor(alpha: number) {
   return useDarkGlass.value ? `rgb(0 0 0 / ${alpha})` : `rgb(255 255 255 / ${alpha})`
 }
 
-const scrolledShadeColor = computed(() => glassColor(SCROLLED_SHADE_ALPHA))
 const glassTintColor = computed(() => glassColor(GLASS_TINT_ALPHA))
 
-// 毛玻璃开启时顶栏遮罩始终使用玻璃滤镜；关闭时本就无滤镜，仍走 opacity 过渡。
-const glassOverlayStyle = computed(() => {
-  if (settings.value.enableFrostedGlass) {
-    return {
-      backgroundColor: hasTopBarBackdrop.value && !props.reachTop
-        ? scrolledShadeColor.value
-        : glassTintColor.value,
-      backdropFilter: 'var(--bew-filter-glass-1)',
-      maskImage: OVERLAY_MASK,
-      WebkitMaskImage: OVERLAY_MASK,
-    }
-  }
-  return {
-    backgroundColor: forceWhiteIcon.value ? 'rgb(0 0 0)' : 'var(--bew-bg)',
-    opacity: props.reachTop
-      ? 0
-      : (hasTopBarBackdrop.value ? SCROLLED_SHADE_ALPHA : SCROLLED_SOLID_OPACITY),
-    backdropFilter: 'none',
-    maskImage: OVERLAY_MASK,
-    WebkitMaskImage: OVERLAY_MASK,
-  }
-})
+// 毛玻璃档恒用薄色，不按有无底图分档：分离前景靠的是模糊本身，
+// 再按底图加深会让「有壁纸」和「无壁纸」变成两个浓度（#1095）。
+const frostedOverlayStyle = computed(() => ({
+  backgroundColor: glassTintColor.value,
+  backdropFilter: 'var(--bew-filter-glass-1)',
+  WebkitBackdropFilter: 'var(--bew-filter-glass-1)',
+  maskImage: FROSTED_OVERLAY_MASK,
+  WebkitMaskImage: FROSTED_OVERLAY_MASK,
+}))
+
+const solidOverlayStyle = computed(() => ({
+  backgroundColor: hasPageBackdrop.value ? 'rgb(0 0 0)' : 'var(--bew-bg)',
+  opacity: props.reachTop ? 0 : SCROLLED_SHADE_ALPHA,
+  maskImage: SOLID_OVERLAY_MASK,
+  WebkitMaskImage: SOLID_OVERLAY_MASK,
+}))
+
+const fadeGradientStyle = computed(() => ({
+  background: fadeGradient.value,
+  opacity: props.reachTop ? 0.8 : 1,
+  height: settings.value.enableFrostedGlass
+    ? 'var(--bew-top-bar-height)'
+    : 'calc(var(--bew-top-bar-height) + var(--bew-space-4))',
+}))
 
 const leftSection = ref<HTMLElement | null>(null)
 const rightSection = ref<HTMLElement | null>(null)
@@ -222,17 +223,16 @@ function refreshSearchContent() {
     p="x-12" m-auto
     h="$bew-top-bar-height"
   >
-    <!-- 低开销顶栏遮罩：常驻挂载，玻璃与恒等滤镜间插值（见 glassOverlayStyle） -->
-    <div class="top-bar-header__glass-overlay" :style="glassOverlayStyle" />
+    <div
+      class="top-bar-header__glass-overlay"
+      :class="{ 'top-bar-header__glass-overlay--frosted': settings.enableFrostedGlass }"
+      :style="settings.enableFrostedGlass ? frostedOverlayStyle : solidOverlayStyle"
+    />
 
     <div
       pos="absolute top-0 left-0" w-full
       pointer-events-none opacity-100 duration-300
-      :style="{
-        background: fadeGradient,
-        opacity: reachTop ? 0.8 : 1,
-        height: 'var(--bew-top-bar-height)',
-      }"
+      :style="fadeGradientStyle"
     />
 
     <!-- Top bar theme color gradient -->
@@ -240,7 +240,11 @@ function refreshSearchContent() {
       <div
         v-if="settings.showTopBarThemeColorGradient && !forceWhiteIcon && reachTop && isDark"
         pos="absolute top-0 left-0" w-full h="$bew-top-bar-height" pointer-events-none
-        :style="{ background: 'linear-gradient(to bottom, var(--bew-theme-color-10), transparent)' }"
+        :style="{
+          background: `linear-gradient(to bottom, ${
+            settings.enableFrostedGlass ? 'var(--bew-theme-color-20)' : 'var(--bew-theme-color-10)'
+          }, transparent)`,
+        }"
       />
     </Transition>
 
@@ -298,18 +302,22 @@ function refreshSearchContent() {
 }
 
 .top-bar-header__glass-overlay {
-  // 垂直居中的主控件下沿，满强度托住搜索框后再余弦收尾。
-  --overlay-mask-plateau: calc((var(--bew-top-bar-height) + var(--bew-top-bar-primary-control-height)) / 2);
+  --overlay-mask-plateau-frosted: calc((var(--bew-top-bar-height) + var(--bew-top-bar-primary-control-height)) / 2);
+  --overlay-mask-plateau-solid: calc(var(--bew-top-bar-height) - var(--bew-space-4));
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
-  height: var(--bew-top-bar-height);
+  height: calc(var(--bew-top-bar-height) + var(--bew-space-4));
   pointer-events: none;
   transition:
     opacity var(--bew-duration-moderate) var(--bew-ease-standard),
     background-color var(--bew-duration-moderate) var(--bew-ease-standard),
     backdrop-filter var(--bew-duration-moderate) var(--bew-ease-standard);
+}
+
+.top-bar-header__glass-overlay--frosted {
+  height: var(--bew-top-bar-height);
 }
 
 .top-bar-header__side {

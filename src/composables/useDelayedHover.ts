@@ -1,14 +1,27 @@
 import { settings } from '~/logic'
 
-// DISABLED WHEN IN TOUCHSCREEN OPTIMIZATION IS ENABLED IN SETTINGS
+// Hover and focus-triggered opening are disabled when touchscreen optimization is enabled.
 export function useDelayedHover({ enterDelay = 300, leaveDelay = 300, beforeEnter, enter, beforeLeave, leave }:
 { enterDelay?: number, leaveDelay?: number, beforeEnter?: () => void, enter: () => void, beforeLeave?: () => void, leave: () => void }) {
   const el = ref<HTMLElement>()
 
   let enterTimer: any | undefined
   let leaveTimer: any | undefined
+  let focusWithin = false
+  let mouseWithin = false
 
-  function handleMouseEnter() {
+  function clearHoverTimers() {
+    if (enterTimer) {
+      clearTimeout(enterTimer)
+      enterTimer = undefined
+    }
+    if (leaveTimer) {
+      clearTimeout(leaveTimer)
+      leaveTimer = undefined
+    }
+  }
+
+  function scheduleEnter() {
     if (beforeEnter)
       beforeEnter()
 
@@ -24,7 +37,10 @@ export function useDelayedHover({ enterDelay = 300, leaveDelay = 300, beforeEnte
       enter()
     }, enterDelay)
   }
-  function handleMouseLeave() {
+  function scheduleLeave() {
+    if (focusWithin || mouseWithin)
+      return
+
     if (beforeLeave)
       beforeLeave()
 
@@ -41,32 +57,68 @@ export function useDelayedHover({ enterDelay = 300, leaveDelay = 300, beforeEnte
     }, leaveDelay)
   }
 
-  watch(el, (el, _, onCleanup) => {
-    if (el) {
-      if (!settings.value.touchScreenOptimization) {
-        el.addEventListener('mouseenter', handleMouseEnter)
-        el.addEventListener('mouseleave', handleMouseLeave)
-      }
-    }
+  function handleMouseEnter() {
+    mouseWithin = true
+    scheduleEnter()
+  }
+
+  function handleMouseLeave() {
+    mouseWithin = false
+    scheduleLeave()
+  }
+
+  function handleFocusIn() {
+    focusWithin = true
+    scheduleEnter()
+  }
+
+  function handleFocusOut(event: FocusEvent) {
+    const nextTarget = event.relatedTarget as Node | null
+    if (nextTarget && el.value?.contains(nextTarget))
+      return
+
+    focusWithin = false
+    scheduleLeave()
+  }
+
+  function addInteractionListeners(element: HTMLElement) {
+    element.addEventListener('focusin', handleFocusIn)
+    element.addEventListener('focusout', handleFocusOut)
+    element.addEventListener('mouseenter', handleMouseEnter)
+    element.addEventListener('mouseleave', handleMouseLeave)
+  }
+
+  function removeInteractionListeners(element: HTMLElement) {
+    element.removeEventListener('focusin', handleFocusIn)
+    element.removeEventListener('focusout', handleFocusOut)
+    element.removeEventListener('mouseenter', handleMouseEnter)
+    element.removeEventListener('mouseleave', handleMouseLeave)
+  }
+
+  watch(el, (element, _, onCleanup) => {
+    if (element && !settings.value.touchScreenOptimization)
+      addInteractionListeners(element)
 
     onCleanup(() => {
-      if (el) {
-        el.removeEventListener('mouseenter', handleMouseEnter)
-        el.removeEventListener('mouseleave', handleMouseLeave)
-      }
+      if (element)
+        removeInteractionListeners(element)
     })
   }, { flush: 'post' })
 
   watch(() => settings.value.touchScreenOptimization, (newValue) => {
     if (newValue) {
-      el.value?.removeEventListener('mouseenter', handleMouseEnter)
-      el.value?.removeEventListener('mouseleave', handleMouseLeave)
+      clearHoverTimers()
+      focusWithin = false
+      mouseWithin = false
+      if (el.value)
+        removeInteractionListeners(el.value)
     }
-    else {
-      el.value?.addEventListener('mouseenter', handleMouseEnter)
-      el.value?.addEventListener('mouseleave', handleMouseLeave)
+    else if (el.value) {
+      addInteractionListeners(el.value)
     }
   }, { immediate: true })
+
+  onScopeDispose(clearHoverTimers)
 
   return el
 }

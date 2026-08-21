@@ -21,6 +21,7 @@ import UploadPop from './pops/UploadPop.vue'
 import UserPanelPop from './pops/UserPanelPop.vue'
 import WatchLaterPop from './pops/WatchLaterPop.vue'
 import TopBarItemEditor from './TopBarItemEditor.vue'
+import TopBarModeSwitcher from './TopBarModeSwitcher.vue'
 
 const emit = defineEmits(['notificationsClick'])
 
@@ -77,6 +78,7 @@ const editableTopBarComponents: EditableTopBarComponent[] = [
   { key: 'notifications', supportsBadge: true },
   { key: 'pinnedChannels', supportsBadge: false },
   { key: 'avatar', supportsBadge: false },
+  { key: 'topBarSwitcher', supportsBadge: false },
 ]
 
 function ensureTopBarComponentsConfig() {
@@ -297,7 +299,7 @@ const shouldShowDivider = computed(() => {
   >
     <div
       class="others"
-      flex="~ items-center gap-1" px-5px
+      flex="~ items-center gap-1" px-1
       text="$bew-text-1"
       :style="{ height: 'var(--bew-control-height)' }"
     >
@@ -686,7 +688,7 @@ const shouldShowDivider = computed(() => {
                 background: `url(${browser.runtime.getURL('/assets/big-vip.svg')}) center / contain no-repeat`,
               }"
               w="28%" h="28%" z-1
-              pos="absolute bottom-18px right-11px" duration-300
+              pos="absolute bottom-16px right-12px" duration-300
             />
 
             <Transition name="slide-in">
@@ -706,12 +708,22 @@ const shouldShowDivider = computed(() => {
           </div>
         </TopBarItemEditor>
       </div>
+
+      <!-- Bewly / Bilibili top bar switcher: keep it as the final action. -->
+      <TopBarModeSwitcher
+        v-if="isLayoutEditing || isComponentVisible('topBarSwitcher')"
+        :force-white-icon="forceWhiteIcon"
+      />
     </div>
   </div>
 </template>
 
 <style lang="scss" scoped>
 @use "../styles/index.scss";
+
+.others {
+  position: relative;
+}
 
 .top-bar-editing-group {
   display: flex !important;

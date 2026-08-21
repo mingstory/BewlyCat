@@ -293,8 +293,6 @@ export function setupNecessarySettingsWatchers() {
     { immediate: true },
   )
 
-  let styleEL: HTMLStyleElement | null = null
-  let bewlyStyleEL: HTMLStyleElement | null = null
   watch(
     [() => localSettings.value.customizeCSS, () => localSettings.value.customizeCSSContent],
     () => {
@@ -310,11 +308,11 @@ export function setupNecessarySettingsWatchers() {
       })
 
       if (localSettings.value.customizeCSS) {
-        styleEL = injectCSS(localSettings.value.customizeCSSContent)
+        const styleEL = injectCSS(localSettings.value.customizeCSSContent)
         styleEL.setAttribute('data-bewly-customizeCSS', '')
 
         if (bewlyShadow) {
-          bewlyStyleEL = injectCSS(localSettings.value.customizeCSSContent, bewlyShadow)
+          const bewlyStyleEL = injectCSS(localSettings.value.customizeCSSContent, bewlyShadow)
           bewlyStyleEL.setAttribute('data-bewly-customizeCSS', '')
         }
       }
@@ -465,9 +463,23 @@ export function setupNecessarySettingsWatchers() {
     applyBewlyDesignClasses()
   }
 
-  window.addEventListener('popstate', refreshBewlyDesignOnRouteChange)
-  window.addEventListener('hashchange', refreshBewlyDesignOnRouteChange)
-  window.setInterval(refreshBewlyDesignOnRouteChange, 800)
+  let bewlyDesignRefreshQueued = false
+  const scheduleBewlyDesignRefresh = () => {
+    if (bewlyDesignRefreshQueued)
+      return
+
+    bewlyDesignRefreshQueued = true
+    // MAIN-world history hooks emit before the native method updates the URL.
+    queueMicrotask(() => {
+      bewlyDesignRefreshQueued = false
+      refreshBewlyDesignOnRouteChange()
+    })
+  }
+
+  window.addEventListener('pushstate', scheduleBewlyDesignRefresh)
+  window.addEventListener('replacestate', scheduleBewlyDesignRefresh)
+  window.addEventListener('popstate', scheduleBewlyDesignRefresh)
+  window.addEventListener('hashchange', scheduleBewlyDesignRefresh)
 
   // Clean Share Link - intercept clipboard copy events
   let cleanShareLinkCopyHandler: ((e: ClipboardEvent) => void) | null = null

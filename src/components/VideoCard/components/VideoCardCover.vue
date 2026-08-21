@@ -64,6 +64,7 @@ const shouldEnableVideoControls = computed(() => settings.value.enableVideoCtrlB
 const shouldEnableSwipeSeek = computed(() => settings.value.enableVideoPreviewSwipeSeek && !props.video?.roomid)
 let hls: Hls | null = null
 let flvPlayer: flvjs.Player | null = null
+let previewGeneration = 0
 /** 仅记录 pointerdown 意图；真正 scrub 需横向拖过阈值后才激活 */
 let activeScrubPointerId: number | null = null
 let scrubStartX = 0
@@ -361,6 +362,7 @@ function syncPreviewFullscreenState() {
 }
 
 function cleanupPlayers() {
+  previewGeneration++
   if (hls) {
     hls.destroy()
     hls = null
@@ -378,10 +380,14 @@ function cleanupPlayers() {
 async function setupPreviewVideo(url: string, videoEl: HTMLVideoElement) {
   // Check if URL is FLV stream
   if (url.includes('.flv')) {
+    const generation = ++previewGeneration
     try {
       // 动态导入 flv.js 以避免构建时依赖问题
       const flvjsModule = await import('flv.js')
       const flvjs = flvjsModule.default
+
+      if (generation !== previewGeneration || !videoEl.isConnected)
+        return
 
       if (flvjs.isSupported()) {
         // Cleanup previous players and clear video src
@@ -683,7 +689,7 @@ onBeforeUnmount(() => {
           text-white rounded="1/2" shadow="$bew-shadow-1"
           border="1 $bew-theme-color"
           grid="~ place-content-center"
-          text="xl" fw-bold
+          class="video-card-rank-badge" text="xl"
         >
           {{ video?.rank }}
         </div>
@@ -701,7 +707,7 @@ onBeforeUnmount(() => {
         <!-- Old layout: Video Duration (right bottom) -->
         <div
           v-if="layout === 'old' && settings.showVideoCardDuration && (video?.duration || video?.durationStr)"
-          class="video-card-overlay-transition"
+          class="video-card-overlay-transition video-card-live-badge"
           pos="absolute bottom-0 right-0"
           z="2"
           p="x-2 y-1"
@@ -738,7 +744,7 @@ onBeforeUnmount(() => {
           v-if="video?.liveStatus === 1"
           class="video-card-overlay-transition"
           :class="layout !== 'old' ? 'group-hover:opacity-0' : { 'opacity-0': shouldHideOverlayElements }"
-          pos="absolute left-0 top-0" bg="$bew-theme-color" text="xs white" fw-bold
+          pos="absolute left-0 top-0" bg="$bew-theme-color" text="xs white"
           p="x-2 y-1" m-1 inline-block rounded="$bew-radius"
         >
           LIVE
@@ -832,6 +838,11 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" scoped>
+.video-card-rank-badge,
+.video-card-live-badge {
+  font-weight: var(--bew-font-weight-bold);
+}
+
 .video-card-overlay-transition {
   transition: opacity var(--bew-duration-moderate, 300ms) var(--bew-ease-standard, ease);
 }

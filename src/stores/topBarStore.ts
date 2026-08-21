@@ -34,7 +34,7 @@ import type { List as VideoItem } from '~/models/video/watchLater'
 import api from '~/utils/api'
 import { shouldShowBewlyTopBar } from '~/utils/bilibiliTopBar'
 import { getCSRF, isHomePage } from '~/utils/main'
-import { isExtensionContextInvalidatedError, onMessage, sendMessage } from '~/utils/messaging'
+import { isBackgroundUnavailableError, onMessage, sendMessage } from '~/utils/messaging'
 
 export const LOGIN_RECHECK_INTERVAL = 1000 * 60 // 已登录但 userInfo 未填充时重查的间隔
 
@@ -69,7 +69,7 @@ export const useTopBarStore = defineStore('topBar', () => {
 
   function getLikeUnreadCount(): number {
     const likeCount = typeof unReadMessage.like === 'number' ? unReadMessage.like : 0
-    const recvLike = (unReadMessage as UnReadMessage & { recv_like?: number }).recv_like
+    const recvLike = unReadMessage.recv_like
     const recvLikeCount = typeof recvLike === 'number' ? recvLike : 0
 
     return Math.max(likeCount, recvLikeCount)
@@ -745,7 +745,7 @@ export const useTopBarStore = defineStore('topBar', () => {
         )
         // 删除会让服务器列表前移，页边界可能与已加载内容重叠，按 aid 去重兜底
         const existingIds = new Set(watchLaterList.map(item => item.aid))
-        const newItems = res.data.list.filter(item => !existingIds.has(item.aid))
+        const newItems = res.data.list.filter((item: VideoItem) => !existingIds.has(item.aid))
         watchLaterList.push(...newItems)
       }
     }
@@ -1289,11 +1289,11 @@ export const useTopBarStore = defineStore('topBar', () => {
       await syncSharedDataFromBroker(options)
     }
     catch (error) {
-      if (!isExtensionContextInvalidatedError(error))
+      if (!isBackgroundUnavailableError(error))
         throw error
 
-      // 扩展重新加载后，旧 content script 的 runtime 无法恢复。
-      // 停止轮询并让后续同步短路，等待后台刷新提示引导页面加载新脚本。
+      // 扩展重新加载或后台不可达后，旧 content script 的 runtime 无法恢复。
+      // 停止轮询并让后续同步短路，等待刷新提示引导页面加载新脚本。
       disableSharedStateMessaging()
     }
   }
@@ -1328,7 +1328,7 @@ export const useTopBarStore = defineStore('topBar', () => {
       TOP_BAR_STATE_MESSAGE.INVALIDATE,
       { accountId },
     ).catch((error) => {
-      if (!isExtensionContextInvalidatedError(error))
+      if (!isBackgroundUnavailableError(error))
         throw error
 
       disableSharedStateMessaging()
@@ -1344,7 +1344,7 @@ export const useTopBarStore = defineStore('topBar', () => {
       TOP_BAR_STATE_MESSAGE.FAVORITES_CHANGED,
       { accountId },
     ).catch((error) => {
-      if (!isExtensionContextInvalidatedError(error))
+      if (!isBackgroundUnavailableError(error))
         throw error
 
       disableSharedStateMessaging()
