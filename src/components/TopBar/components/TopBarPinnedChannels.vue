@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useDebounceFn, useResizeObserver } from '@vueuse/core'
+import { onClickOutside, useDebounceFn, useResizeObserver } from '@vueuse/core'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -22,7 +22,13 @@ const { isLayoutEditing } = useLayoutEditMode()
 const containerRef = ref<HTMLElement | null>(null)
 const listRef = ref<HTMLElement | null>(null)
 const displayedKeys = ref<string[]>([])
+const showHiddenPop = ref(false)
+const hiddenMoreRef = ref<HTMLElement | null>(null)
 let lastObservedWidth = 0
+
+onClickOutside(hiddenMoreRef, () => {
+  showHiddenPop.value = false
+})
 
 const channelMap = computed(() => {
   const map = new Map<string, TopBarChannelConfig & { name: string }>()
@@ -51,7 +57,7 @@ const hiddenChannels = computed(() => {
 })
 
 const hiddenCount = computed(() => hiddenChannels.value.length)
-const hiddenTooltip = computed(() => hiddenChannels.value.map(channel => channel.name).join(', '))
+
 watch(validPinnedKeys, async (keys) => {
   displayedKeys.value = [...keys]
   await adjustVisibility(true)
@@ -63,6 +69,11 @@ watch(() => locale.value, async () => {
 
 watch(() => props.forceWhiteIcon, () => {
   void adjustVisibility(true)
+})
+
+watch(isLayoutEditing, (editing) => {
+  if (editing)
+    showHiddenPop.value = false
 })
 
 useResizeObserver(containerRef, (entries) => {
@@ -78,12 +89,6 @@ const handleWindowResize = useDebounceFn(() => {
 
 onMounted(() => {
   window.addEventListener('resize', handleWindowResize)
-
-  // 消费端挂载时自愈：清洗脏数据
-  const current = settings.value.topBarPinnedChannels || []
-  const normalized = normalizePinnedChannels(current)
-  if (normalized.length !== current.length || !normalized.every((v, i) => v === current[i]))
-    settings.value.topBarPinnedChannels = normalized
 })
 
 onUnmounted(() => {
@@ -108,17 +113,17 @@ async function adjustVisibility(reset = false) {
   if (!listEl)
     return
 
-  // ✅ 性能优化：批量读取布局，避免read-write-read循环
-  // 使用RAF批量所有布局读取，减少15-30次强制布局到1次
-  while (displayedKeys.value.length > 0) {
-    // 批量读取所有布局属性（在RAF中）
+  // 将布局读取集中在同一帧，测量总溢出量并进行步长切片收敛
+  for (let round = 0; round < 3 && displayedKeys.value.length > 0; round++) {
     const overflow = await checkOverflowBatched()
-
-    if (!overflow)
+    if (!overflow.isOverflow)
       break
 
-    // 移除最后一个item
-    displayedKeys.value = displayedKeys.value.slice(0, -1)
+    const itemUnitWidth = 34
+    const excessCount = Math.max(1, Math.ceil(overflow.overflowPx / itemUnitWidth))
+    const targetLength = Math.max(0, displayedKeys.value.length - excessCount)
+
+    displayedKeys.value = displayedKeys.value.slice(0, targetLength)
     await nextTick()
 
     if (!listRef.value)
@@ -127,36 +132,44 @@ async function adjustVisibility(reset = false) {
 }
 
 /**
- * 批量检查溢出状态（性能优化版本）
- * 将所有布局读取放在单个RAF中，避免强制同步布局
+ * 集中检查溢出状态与溢出像素差量
+ * 将布局读取集中在同一帧，避免反复触发强制同步布局
  */
-function checkOverflowBatched(): Promise<boolean> {
+function checkOverflowBatched(): Promise<{ isOverflow: boolean, overflowPx: number }> {
   return new Promise((resolve) => {
     requestAnimationFrame(() => {
       const listEl = listRef.value
       const containerEl = containerRef.value
 
-      // 批量读取1: 列表自身溢出检查
-      if (listEl && listEl.scrollWidth - listEl.clientWidth > 1) {
-        resolve(true)
-        return
+      let maxOverflowPx = 0
+
+      // 1. 列表自身溢出
+      if (listEl) {
+        const delta = listEl.scrollWidth - listEl.clientWidth
+        if (delta > 1)
+          maxOverflowPx = Math.max(maxOverflowPx, delta)
       }
 
-      // 批量读取2: main元素溢出检查
+      // 2. main 容器溢出
       const mainEl = containerEl?.closest('main') as HTMLElement | null
-      if (mainEl && mainEl.scrollWidth - mainEl.clientWidth > 1) {
-        resolve(true)
-        return
+      if (mainEl) {
+        const delta = mainEl.scrollWidth - mainEl.clientWidth
+        if (delta > 1)
+          maxOverflowPx = Math.max(maxOverflowPx, delta)
       }
 
-      // 批量读取3: 搜索框溢出检查
+      // 3. 搜索框溢出
       const searchEl = mainEl?.querySelector('[data-top-bar-search]') as HTMLElement | null
-      if (searchEl && searchEl.scrollWidth - searchEl.clientWidth > 1) {
-        resolve(true)
-        return
+      if (searchEl) {
+        const delta = searchEl.scrollWidth - searchEl.clientWidth
+        if (delta > 1)
+          maxOverflowPx = Math.max(maxOverflowPx, delta)
       }
 
-      resolve(false)
+      resolve({
+        isOverflow: maxOverflowPx > 0,
+        overflowPx: maxOverflowPx,
+      })
     })
   })
 }
@@ -173,6 +186,17 @@ function handleChannelClick(event: MouseEvent) {
 
   event.preventDefault()
   event.stopPropagation()
+}
+
+function toggleHiddenPop(event: MouseEvent) {
+  if (isLayoutEditing.value)
+    return
+  event.stopPropagation()
+  showHiddenPop.value = !showHiddenPop.value
+}
+
+function handleHiddenItemClick() {
+  showHiddenPop.value = false
 }
 </script>
 
@@ -220,14 +244,62 @@ function handleChannelClick(event: MouseEvent) {
             </div>
           </ALink>
         </div>
+
         <div
           v-if="hiddenCount > 0"
-          class="pinned-channels__more"
-          :class="{ 'white-icon': props.forceWhiteIcon }"
-          :title="hiddenTooltip"
+          ref="hiddenMoreRef"
+          class="pinned-channels__more-container"
+          @mouseenter="!isLayoutEditing && (showHiddenPop = true)"
+          @mouseleave="showHiddenPop = false"
         >
-          +{{ hiddenCount }}
+          <button
+            type="button"
+            class="pinned-channels__more"
+            :class="{
+              'white-icon': props.forceWhiteIcon,
+              'is-active': showHiddenPop,
+            }"
+            :aria-label="`${$t('settings.topbar_pinned_channels_title')}: +${hiddenCount}`"
+            :aria-expanded="showHiddenPop"
+            @click="toggleHiddenPop"
+          >
+            +{{ hiddenCount }}
+          </button>
+
+          <Transition name="slide-in">
+            <div
+              v-if="showHiddenPop && !isLayoutEditing"
+              class="pinned-channels__pop"
+              @click.stop
+            >
+              <div class="pinned-channels__pop-list">
+                <ALink
+                  v-for="channel in hiddenChannels"
+                  :key="channel.key"
+                  :href="channel.href"
+                  type="topBar"
+                  class="pinned-channels__pop-item"
+                  :title="channel.name"
+                  @click="handleHiddenItemClick"
+                >
+                  <div v-if="channel.icon.startsWith('#')" class="pinned-channels__pop-icon">
+                    <svg aria-hidden="true">
+                      <use :xlink:href="channel.icon" />
+                    </svg>
+                  </div>
+                  <div v-else class="pinned-channels__pop-icon">
+                    <i
+                      :class="channel.icon"
+                      :style="props.forceWhiteIcon ? undefined : { color: channel.color }"
+                    />
+                  </div>
+                  <span class="pinned-channels__pop-label">{{ channel.name }}</span>
+                </ALink>
+              </div>
+            </div>
+          </Transition>
         </div>
+
         <span v-if="isLayoutEditing && !validPinnedKeys.length" class="pinned-channels__placeholder">
           <i i-mingcute:pin-line aria-hidden="true" />
           {{ $t('settings.topbar_pinned_channels_title') }}
@@ -273,23 +345,33 @@ function handleChannelClick(event: MouseEvent) {
     }
   }
 
+  &__more-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 100%;
+  }
+
   &__more {
     display: grid;
     place-items: center;
     height: var(--bew-control-item-height);
     min-width: var(--bew-control-item-height);
     padding: 0 8px;
+    border: none;
     border-radius: var(--bew-control-item-radius);
     background: transparent;
     color: var(--bew-text-2);
     font-size: var(--bew-control-label-size);
     font-weight: var(--bew-control-brand-label-weight);
     line-height: var(--bew-control-label-line-height);
+    cursor: pointer;
     transition:
       background-color var(--bew-duration-normal, 200ms) ease,
       color var(--bew-duration-normal, 200ms) ease;
 
-    &:hover {
+    &:hover,
+    &.is-active {
       color: var(--bew-segment-item-hover-color);
       background: var(--bew-segment-item-hover-bg);
     }
@@ -298,10 +380,80 @@ function handleChannelClick(event: MouseEvent) {
       color: white;
       background: transparent;
 
-      &:hover {
+      &:hover,
+      &.is-active {
         background: var(--bew-segment-item-hover-bg-white);
       }
     }
+  }
+
+  &__pop {
+    position: absolute;
+    top: calc(100% + var(--bew-space-2));
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 140px;
+    max-width: 200px;
+    max-height: min(320px, 60vh);
+    padding: var(--bew-space-1);
+    border: 1px solid var(--bew-border-color);
+    border-radius: var(--bew-popover-radius);
+    background: var(--bew-elevated);
+    box-shadow: var(--bew-shadow-3);
+    backdrop-filter: var(--bew-filter-glass-1);
+    -webkit-backdrop-filter: var(--bew-filter-glass-1);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    z-index: 100;
+  }
+
+  &__pop-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--bew-space-0-5);
+  }
+
+  &__pop-item {
+    display: flex;
+    align-items: center;
+    gap: var(--bew-space-2);
+    padding: var(--bew-space-1-5) var(--bew-space-2);
+    border-radius: var(--bew-interactive-radius);
+    color: var(--bew-text-1);
+    font-size: var(--bew-font-size-control);
+    line-height: var(--bew-line-height-control);
+    text-decoration: none;
+    transition: background-color var(--bew-duration-fast) var(--bew-ease-standard);
+
+    &:hover {
+      background: var(--bew-fill-2);
+    }
+  }
+
+  &__pop-icon {
+    display: grid;
+    place-items: center;
+    width: var(--bew-control-icon-size);
+    height: var(--bew-control-icon-size);
+    flex: 0 0 auto;
+
+    svg {
+      width: var(--bew-control-icon-size);
+      height: var(--bew-control-icon-size);
+      fill: currentColor;
+    }
+
+    i {
+      font-size: var(--bew-control-icon-size);
+    }
+  }
+
+  &__pop-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   &--editing {

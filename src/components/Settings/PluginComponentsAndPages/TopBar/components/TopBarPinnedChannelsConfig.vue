@@ -37,31 +37,31 @@ const channelOptionMap = computed(() => {
   return map
 })
 
-// 响应式数据清洗：确保无论通过何种途径变更，底层数据均保持幂等纯净
+// 局部常驻分区列表模型，作为拖拽与展示的直接数据源
+const localPinnedList = ref<PinnedChannelOption[]>([])
+
+// 保持设置中的常驻分区列表为规范化数据，并同步到局部展示模型
 watch(
   () => settings.value.topBarPinnedChannels,
-  (newVal) => {
-    const normalized = normalizePinnedChannels(newVal)
-    if (
-      normalized.length !== newVal?.length
-      || !normalized.every((v, i) => v === newVal[i])
-    ) {
-      settings.value.topBarPinnedChannels = normalized
-    }
+  (keys) => {
+    const normalized = normalizePinnedChannels(keys)
+    localPinnedList.value = normalized
+      .map(key => channelOptionMap.value.get(key))
+      .filter((item): item is PinnedChannelOption => item !== undefined)
   },
-  { deep: true, immediate: true },
+  { immediate: true },
 )
 
 const selectedKeySet = computed(() => new Set(settings.value.topBarPinnedChannels || []))
 
-const validPinnedItems = computed<PinnedChannelOption[]>(() => {
-  return (settings.value.topBarPinnedChannels || [])
-    .map(key => channelOptionMap.value.get(key))
-    .filter((item): item is PinnedChannelOption => item !== undefined)
-})
-
 const chipsContainerRef = ref<HTMLElement | null>(null)
 const addButtonRef = ref<any>(null)
+
+function handleDragEnd() {
+  settings.value.topBarPinnedChannels = normalizePinnedChannels(
+    localPinnedList.value.map(item => item.value),
+  )
+}
 
 function toggleChannel(value: string) {
   const current = normalizePinnedChannels(settings.value.topBarPinnedChannels)
@@ -91,7 +91,7 @@ function removePinnedChannel(value: string, index?: number) {
 }
 
 function movePinnedChannel(index: number, direction: -1 | 1) {
-  const current = [...(settings.value.topBarPinnedChannels || [])]
+  const current = normalizePinnedChannels(settings.value.topBarPinnedChannels)
   const targetIndex = index + direction
   if (targetIndex < 0 || targetIndex >= current.length)
     return
@@ -124,11 +124,11 @@ const showChannelPicker = ref(false)
       <template #title>
         <div class="topbar-item-title-with-action">
           <span>{{ $t('settings.topbar_pinned_channels_title') }}</span>
-          <span v-if="validPinnedItems.length" class="pinned-count-badge">
-            {{ $t('settings.topbar_pinned_channels_count_hint', { count: validPinnedItems.length }) }}
+          <span v-if="localPinnedList.length" class="pinned-count-badge">
+            {{ $t('settings.topbar_pinned_channels_count_hint', { count: localPinnedList.length }) }}
           </span>
           <Button
-            v-if="validPinnedItems.length"
+            v-if="localPinnedList.length"
             size="small"
             type="secondary"
             @click="resetPinnedChannels"
@@ -144,22 +144,22 @@ const showChannelPicker = ref(false)
       <template #bottom>
         <div class="pinned-channels-panel">
           <div
-            v-if="validPinnedItems.length"
+            v-if="localPinnedList.length"
             ref="chipsContainerRef"
             role="list"
             :aria-label="$t('settings.topbar_pinned_channels_title')"
           >
             <draggable
-              v-model="settings.topBarPinnedChannels"
-              :item-key="(key: string) => key"
+              v-model="localPinnedList"
+              item-key="value"
               :animation="200"
               class="pinned-chips"
               ghost-class="pinned-chip--ghost"
               handle=".pinned-chip__handle"
+              @end="handleDragEnd"
             >
-              <template #item="{ element: key, index }">
+              <template #item="{ element: item, index }">
                 <div
-                  v-if="channelOptionMap.get(key)"
                   role="listitem"
                   class="pinned-chip"
                 >
@@ -167,7 +167,7 @@ const showChannelPicker = ref(false)
                     type="button"
                     class="pinned-chip__handle"
                     :title="$t('settings.topbar_pinned_channels_order_tip')"
-                    :aria-label="`${channelOptionMap.get(key)!.label} - ${$t('settings.topbar_pinned_channels_order_tip')}`"
+                    :aria-label="`${item.label} - ${$t('settings.topbar_pinned_channels_order_tip')}`"
                     @keydown.left.prevent="movePinnedChannel(index, -1)"
                     @keydown.up.prevent="movePinnedChannel(index, -1)"
                     @keydown.right.prevent="movePinnedChannel(index, 1)"
@@ -175,24 +175,24 @@ const showChannelPicker = ref(false)
                   >
                     <div i-mingcute:dots-vertical-line aria-hidden="true" />
                   </button>
-                  <div v-if="channelOptionMap.get(key)!.icon.startsWith('#')" class="pinned-chip__icon">
+                  <div v-if="item.icon.startsWith('#')" class="pinned-chip__icon">
                     <svg aria-hidden="true">
-                      <use :xlink:href="channelOptionMap.get(key)!.icon" />
+                      <use :xlink:href="item.icon" />
                     </svg>
                   </div>
                   <div v-else class="pinned-chip__icon">
                     <i
-                      :class="channelOptionMap.get(key)!.icon"
-                      :style="{ color: channelOptionMap.get(key)!.color ?? '' }"
+                      :class="item.icon"
+                      :style="{ color: item.color ?? '' }"
                     />
                   </div>
-                  <span class="pinned-chip__label">{{ channelOptionMap.get(key)!.label }}</span>
+                  <span class="pinned-chip__label">{{ item.label }}</span>
                   <button
                     type="button"
                     class="pinned-chip__remove"
                     :title="$t('settings.topbar_pinned_channels_remove')"
-                    :aria-label="`${$t('settings.topbar_pinned_channels_remove')} ${channelOptionMap.get(key)!.label}`"
-                    @click.stop="removePinnedChannel(key, index)"
+                    :aria-label="`${$t('settings.topbar_pinned_channels_remove')} ${item.label}`"
+                    @click.stop="removePinnedChannel(item.value, index)"
                   >
                     <div i-mingcute:close-line aria-hidden="true" />
                   </button>
