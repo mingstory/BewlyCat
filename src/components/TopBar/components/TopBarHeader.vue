@@ -470,7 +470,7 @@ function refreshSearchContent() {
 .top-bar-header__search-control {
   position: relative;
   width: 100%;
-  min-width: 0;
+  min-width: 260px;
   flex: 1 1 auto;
 }
 
@@ -490,6 +490,10 @@ function refreshSearchContent() {
   .top-bar-header {
     gap: 8px;
     padding-inline: 8px;
+  }
+
+  .top-bar-header__search-control {
+    min-width: 0;
   }
 }
 </style>

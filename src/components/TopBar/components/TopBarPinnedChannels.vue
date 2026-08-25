@@ -77,7 +77,9 @@ watch(() => props.forceWhiteIcon, () => {
   void adjustVisibility(true)
 })
 
-useResizeObserver(containerRef, (entries) => {
+const mainRef = computed(() => containerRef.value?.closest('main') as HTMLElement | null)
+
+useResizeObserver(mainRef, (entries) => {
   const width = entries[0]?.contentRect.width ?? 0
   const shouldReset = width > lastObservedWidth
   lastObservedWidth = width
@@ -352,7 +354,7 @@ function handleChannelClick(event: MouseEvent) {
   min-height: var(--bew-control-height);
 }
 
-@media (max-width: 1279px) {
+@media (max-width: 767px) {
   .pinned-channels {
     display: none;
   }
