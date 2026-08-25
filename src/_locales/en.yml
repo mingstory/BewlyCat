@@ -583,7 +583,7 @@ settings:
   topbar_pinned_channels_hint: Click a tile to pin or unpin it; the order follows the sequence of your clicks. Items toward the end hide first when space is tight.
   topbar_pinned_channels_all_selected: All channels have already been pinned.
   topbar_pinned_channels_empty: You have not pinned any channels yet.
-  topbar_pinned_channels_order_tip: Drag chips to reorder. Channels that exceed the top bar width will be collapsed into "+N".
+  topbar_pinned_channels_order_tip: Drag chips to reorder.
   topbar_pinned_channels_add: Add Pinned Channel
   topbar_pinned_channels_dialog_title: Select Pinned Channels
   topbar_pinned_channels_dialog_desc: Click a channel to pin or unpin. You can drag chips in the settings to reorder them.
