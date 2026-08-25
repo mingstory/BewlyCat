@@ -214,6 +214,7 @@ const showChannelPicker = ref(false)
       max-width="min(680px, 90vw)"
       content-max-height="min(460px, 60vh)"
       append-to-bewly-body
+      transition-name="moments-dialog"
       :show-footer="false"
       @close="showChannelPicker = false"
     >
