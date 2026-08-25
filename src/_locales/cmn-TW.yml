@@ -981,7 +981,7 @@ settings:
   topbar_pinned_channels_hint: 點擊卡片即可固定或取消，點擊順序決定顯示順序。排在後面的分區會在空間不足時優先隱藏。
   topbar_pinned_channels_all_selected: 所有可用分區都已加入。
   topbar_pinned_channels_empty: 尚未新增任何常駐分區。
-  topbar_pinned_channels_order_tip: 拖曳膠囊可調整顯示順序，超出頂部列寬度的分區將自動摺疊至「+N」。
+  topbar_pinned_channels_order_tip: 拖曳膠囊調整顯示順序
   topbar_pinned_channels_add: 新增常駐分區
   topbar_pinned_channels_dialog_title: 選擇常駐分區
   topbar_pinned_channels_dialog_desc: 點擊分區快速新增或取消；在主介面可拖曳膠囊調整顯示順序。
