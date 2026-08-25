@@ -142,18 +142,15 @@ const showChannelPicker = ref(false)
               ghost-class="pinned-chip--ghost"
               handle=".pinned-chip__handle"
             >
-              <template #item="{ element, index }">
+              <template #item="{ element }">
                 <div
                   role="listitem"
                   class="pinned-chip"
-                  :aria-label="`${element.label} (${index + 1}/${validPinnedItems.length})`"
                 >
                   <span
                     class="pinned-chip__handle"
-                    role="button"
-                    tabindex="0"
                     :title="$t('settings.topbar_pinned_channels_order_tip')"
-                    :aria-label="`${$t('settings.topbar_pinned_channels_order_tip')}: ${element.label}`"
+                    aria-hidden="true"
                   >
                     <div i-mingcute:dots-vertical-line aria-hidden="true" />
                   </span>
@@ -208,12 +205,15 @@ const showChannelPicker = ref(false)
       </template>
     </SettingsItem>
 
-    <!-- 常驻分区选择弹窗（纯选择器模式，即点即存，关闭即完成） -->
+    <!-- 常驻分区选择弹窗（挂载至 Bewly Body，适配毛玻璃与视口自适应） -->
     <Dialog
       v-if="showChannelPicker"
       :title="$t('settings.topbar_pinned_channels_dialog_title')"
       :desc="$t('settings.topbar_pinned_channels_dialog_desc')"
       width="680px"
+      max-width="min(680px, 90vw)"
+      content-max-height="min(460px, 60vh)"
+      append-to-bewly-body
       :show-footer="false"
       @close="showChannelPicker = false"
     >
@@ -402,10 +402,7 @@ const showChannelPicker = ref(false)
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
   gap: var(--bew-space-2);
-  max-height: 420px;
-  overflow-y: auto;
   padding: var(--bew-space-1);
-  overscroll-behavior: contain;
 }
 
 .picker-item {
