@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import draggable from 'vuedraggable'
 
@@ -8,7 +8,7 @@ import Dialog from '~/components/Dialog.vue'
 import SettingsItem from '~/components/Settings/components/SettingsItem.vue'
 import SettingsItemGroup from '~/components/Settings/components/SettingsItemGroup.vue'
 import type { TopBarChannelConfig } from '~/components/TopBar/constants/channels'
-import { allChannelConfigs } from '~/components/TopBar/constants/channels'
+import { allChannelConfigs, normalizePinnedChannels } from '~/components/TopBar/constants/channels'
 import { settings } from '~/logic'
 
 const { t } = useI18n()
@@ -37,59 +37,73 @@ const channelOptionMap = computed(() => {
   return map
 })
 
-/**
- * 归一化常驻分区 Key 列表：
- * 1. 过滤无效/废弃的 key
- * 2. 移除重复项，保证顺序唯一
- */
-function normalizePinnedChannels(keys: unknown): string[] {
-  if (!Array.isArray(keys))
-    return []
-
-  const seen = new Set<string>()
-  const result: string[] = []
-  for (const key of keys) {
-    if (typeof key === 'string' && channelOptionMap.value.has(key) && !seen.has(key)) {
-      seen.add(key)
-      result.push(key)
+// 响应式数据清洗：确保无论通过何种途径变更，底层数据均保持幂等纯净
+watch(
+  () => settings.value.topBarPinnedChannels,
+  (newVal) => {
+    const normalized = normalizePinnedChannels(newVal)
+    if (
+      normalized.length !== newVal?.length
+      || !normalized.every((v, i) => v === newVal[i])
+    ) {
+      settings.value.topBarPinnedChannels = normalized
     }
-  }
-  return result
-}
+  },
+  { deep: true, immediate: true },
+)
 
-function sanitizePinnedChannels() {
-  const current = settings.value.topBarPinnedChannels || []
-  const normalized = normalizePinnedChannels(current)
-  if (normalized.length !== current.length || !normalized.every((v, i) => v === current[i]))
-    settings.value.topBarPinnedChannels = normalized
-}
-
-onMounted(sanitizePinnedChannels)
+const selectedKeySet = computed(() => new Set(settings.value.topBarPinnedChannels || []))
 
 const validPinnedItems = computed<PinnedChannelOption[]>(() => {
-  return normalizePinnedChannels(settings.value.topBarPinnedChannels)
+  return (settings.value.topBarPinnedChannels || [])
     .map(key => channelOptionMap.value.get(key))
     .filter((item): item is PinnedChannelOption => item !== undefined)
 })
 
-const draggablePinnedList = computed({
-  get: () => validPinnedItems.value,
-  set: (newItems: PinnedChannelOption[]) => {
-    settings.value.topBarPinnedChannels = normalizePinnedChannels(newItems.map(item => item.value))
-  },
-})
+const chipsContainerRef = ref<HTMLElement | null>(null)
+const addButtonRef = ref<any>(null)
 
 function toggleChannel(value: string) {
   const current = normalizePinnedChannels(settings.value.topBarPinnedChannels)
   if (current.includes(value))
     settings.value.topBarPinnedChannels = current.filter(key => key !== value)
   else
-    settings.value.topBarPinnedChannels = normalizePinnedChannels([...current, value])
+    settings.value.topBarPinnedChannels = [...current, value]
 }
 
-function removePinnedChannel(value: string) {
+function removePinnedChannel(value: string, index?: number) {
   const current = normalizePinnedChannels(settings.value.topBarPinnedChannels)
   settings.value.topBarPinnedChannels = current.filter(key => key !== value)
+
+  if (typeof index === 'number') {
+    nextTick(() => {
+      const remainingRemoves = chipsContainerRef.value?.querySelectorAll<HTMLElement>('.pinned-chip__remove')
+      if (remainingRemoves && remainingRemoves.length > 0) {
+        const focusIndex = Math.min(index, remainingRemoves.length - 1)
+        remainingRemoves[focusIndex]?.focus()
+      }
+      else {
+        const addBtnEl = addButtonRef.value?.$el ?? addButtonRef.value
+        addBtnEl?.focus?.()
+      }
+    })
+  }
+}
+
+function movePinnedChannel(index: number, direction: -1 | 1) {
+  const current = [...(settings.value.topBarPinnedChannels || [])]
+  const targetIndex = index + direction
+  if (targetIndex < 0 || targetIndex >= current.length)
+    return
+  const temp = current[index]
+  current[index] = current[targetIndex]
+  current[targetIndex] = temp
+  settings.value.topBarPinnedChannels = current
+
+  nextTick(() => {
+    const handles = chipsContainerRef.value?.querySelectorAll<HTMLElement>('.pinned-chip__handle')
+    handles?.[targetIndex]?.focus()
+  })
 }
 
 function resetPinnedChannels() {
@@ -131,47 +145,54 @@ const showChannelPicker = ref(false)
         <div class="pinned-channels-panel">
           <div
             v-if="validPinnedItems.length"
+            ref="chipsContainerRef"
             role="list"
             :aria-label="$t('settings.topbar_pinned_channels_title')"
           >
             <draggable
-              v-model="draggablePinnedList"
-              item-key="value"
+              v-model="settings.topBarPinnedChannels"
+              :item-key="(key: string) => key"
               :animation="200"
               class="pinned-chips"
               ghost-class="pinned-chip--ghost"
               handle=".pinned-chip__handle"
             >
-              <template #item="{ element }">
+              <template #item="{ element: key, index }">
                 <div
+                  v-if="channelOptionMap.get(key)"
                   role="listitem"
                   class="pinned-chip"
                 >
-                  <span
+                  <button
+                    type="button"
                     class="pinned-chip__handle"
                     :title="$t('settings.topbar_pinned_channels_order_tip')"
-                    aria-hidden="true"
+                    :aria-label="`${channelOptionMap.get(key)!.label} - ${$t('settings.topbar_pinned_channels_order_tip')}`"
+                    @keydown.left.prevent="movePinnedChannel(index, -1)"
+                    @keydown.up.prevent="movePinnedChannel(index, -1)"
+                    @keydown.right.prevent="movePinnedChannel(index, 1)"
+                    @keydown.down.prevent="movePinnedChannel(index, 1)"
                   >
                     <div i-mingcute:dots-vertical-line aria-hidden="true" />
-                  </span>
-                  <div v-if="element.icon.startsWith('#')" class="pinned-chip__icon">
+                  </button>
+                  <div v-if="channelOptionMap.get(key)!.icon.startsWith('#')" class="pinned-chip__icon">
                     <svg aria-hidden="true">
-                      <use :xlink:href="element.icon" />
+                      <use :xlink:href="channelOptionMap.get(key)!.icon" />
                     </svg>
                   </div>
                   <div v-else class="pinned-chip__icon">
                     <i
-                      :class="element.icon"
-                      :style="{ color: element.color ?? '' }"
+                      :class="channelOptionMap.get(key)!.icon"
+                      :style="{ color: channelOptionMap.get(key)!.color ?? '' }"
                     />
                   </div>
-                  <span class="pinned-chip__label">{{ element.label }}</span>
+                  <span class="pinned-chip__label">{{ channelOptionMap.get(key)!.label }}</span>
                   <button
                     type="button"
                     class="pinned-chip__remove"
                     :title="$t('settings.topbar_pinned_channels_remove')"
-                    :aria-label="`${$t('settings.topbar_pinned_channels_remove')} ${element.label}`"
-                    @click.stop="removePinnedChannel(element.value)"
+                    :aria-label="`${$t('settings.topbar_pinned_channels_remove')} ${channelOptionMap.get(key)!.label}`"
+                    @click.stop="removePinnedChannel(key, index)"
                   >
                     <div i-mingcute:close-line aria-hidden="true" />
                   </button>
@@ -181,12 +202,17 @@ const showChannelPicker = ref(false)
           </div>
 
           <div v-else class="pinned-empty-tip">
-            <div i-mingcute:information-line text-base />
+            <div
+              i-mingcute:information-line
+              class="pinned-empty-tip__icon"
+              aria-hidden="true"
+            />
             <span>{{ $t('settings.topbar_pinned_channels_empty') }}</span>
           </div>
 
           <div class="pinned-actions-row">
             <Button
+              ref="addButtonRef"
               size="small"
               type="secondary"
               class="pinned-add-button"
@@ -225,7 +251,8 @@ const showChannelPicker = ref(false)
             :key="option.value"
             type="button"
             class="picker-item"
-            :class="{ 'is-selected': settings.topBarPinnedChannels?.includes(option.value) }"
+            :class="{ 'is-selected': selectedKeySet.has(option.value) }"
+            :aria-pressed="selectedKeySet.has(option.value)"
             @click="toggleChannel(option.value)"
           >
             <div v-if="option.icon.startsWith('#')" class="picker-item__icon">
@@ -238,7 +265,7 @@ const showChannelPicker = ref(false)
             </div>
             <span class="picker-item__label">{{ option.label }}</span>
             <div
-              v-if="settings.topBarPinnedChannels?.includes(option.value)"
+              v-if="selectedKeySet.has(option.value)"
               class="picker-item__check"
             >
               <div i-mingcute:check-fill aria-hidden="true" />
@@ -314,12 +341,28 @@ const showChannelPicker = ref(false)
   &__handle {
     display: grid;
     place-items: center;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: transparent;
     cursor: grab;
     color: var(--bew-text-3);
     font-size: var(--bew-icon-size-sm);
+    border-radius: var(--bew-radius-xs, 2px);
+    transition: color var(--bew-duration-fast) var(--bew-ease-standard);
 
     &:active {
       cursor: grabbing;
+    }
+
+    &:hover {
+      color: var(--bew-text-1);
+    }
+
+    &:focus-visible {
+      color: var(--bew-theme-color);
+      outline: 2px solid var(--bew-theme-color);
+      outline-offset: 1px;
     }
   }
 
@@ -378,6 +421,10 @@ const showChannelPicker = ref(false)
   color: var(--bew-text-3);
   font-size: var(--bew-font-size-control);
   line-height: var(--bew-line-height-control);
+
+  &__icon {
+    font-size: var(--bew-icon-size-md);
+  }
 }
 
 .pinned-actions-row {

@@ -578,10 +578,8 @@ settings:
   topbar_components_adjustment: Top Bar Components Badge Settings
   topbar_components_adjustment_desc: Configure the badge display mode for each top bar icon
   group_topbar_pinned_channels: Top Bar Pinned Channels
-  topbar_pinned_channels_desc: Choose items from the logo dropdown to keep directly on the top bar and arrange their priority.
+  topbar_pinned_channels_desc: Choose items from the logo dropdown to keep directly on the top bar and arrange their priority. Items toward the end hide first when space is tight.
   topbar_pinned_channels_title: Pinned channels
-  topbar_pinned_channels_hint: Click a tile to pin or unpin it; the order follows the sequence of your clicks. Items toward the end hide first when space is tight.
-  topbar_pinned_channels_all_selected: All channels have already been pinned.
   topbar_pinned_channels_empty: You have not pinned any channels yet.
   topbar_pinned_channels_order_tip: Drag chips to reorder
   topbar_pinned_channels_add: Add Pinned Channel

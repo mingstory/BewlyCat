@@ -71,3 +71,25 @@ export const allChannelConfigs: TopBarChannelConfig[] = [
   ...genreChannelConfigs,
   ...otherChannelConfigs,
 ]
+
+export const allChannelKeySet = new Set<string>(allChannelConfigs.map(c => c.key))
+
+/**
+ * 归一化常驻分区 Key 列表：
+ * 1. 过滤无效/废弃的 key
+ * 2. 移除重复项，保证顺序唯一
+ */
+export function normalizePinnedChannels(keys: unknown): string[] {
+  if (!Array.isArray(keys))
+    return []
+
+  const seen = new Set<string>()
+  const result: string[] = []
+  for (const key of keys) {
+    if (typeof key === 'string' && allChannelKeySet.has(key) && !seen.has(key)) {
+      seen.add(key)
+      result.push(key)
+    }
+  }
+  return result
+}

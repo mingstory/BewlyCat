@@ -9,7 +9,7 @@ import { settings } from '~/logic'
 import { isComponentVisible } from '~/utils/topBarBadge'
 
 import type { TopBarChannelConfig } from '../constants/channels'
-import { allChannelConfigs } from '../constants/channels'
+import { allChannelConfigs, normalizePinnedChannels } from '../constants/channels'
 import TopBarItemEditor from './TopBarItemEditor.vue'
 
 const props = defineProps<{
@@ -35,19 +35,7 @@ const channelMap = computed(() => {
   return map
 })
 
-const pinnedKeys = computed<string[]>(() => settings.value.topBarPinnedChannels ?? [])
-
-const validPinnedKeys = computed(() => {
-  const seen = new Set<string>()
-  return pinnedKeys.value.filter((key) => {
-    if (seen.has(key))
-      return false
-    const exists = channelMap.value.has(key)
-    if (exists)
-      seen.add(key)
-    return exists
-  })
-})
+const validPinnedKeys = computed(() => normalizePinnedChannels(settings.value.topBarPinnedChannels))
 
 const displayedChannels = computed(() => {
   return displayedKeys.value
@@ -90,6 +78,12 @@ const handleWindowResize = useDebounceFn(() => {
 
 onMounted(() => {
   window.addEventListener('resize', handleWindowResize)
+
+  // 消费端挂载时自愈：清洗脏数据
+  const current = settings.value.topBarPinnedChannels || []
+  const normalized = normalizePinnedChannels(current)
+  if (normalized.length !== current.length || !normalized.every((v, i) => v === current[i]))
+    settings.value.topBarPinnedChannels = normalized
 })
 
 onUnmounted(() => {

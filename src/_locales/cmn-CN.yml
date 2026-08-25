@@ -631,15 +631,13 @@ settings:
   topbar_components_adjustment: 顶栏组件角标设置
   topbar_components_adjustment_desc: 配置各个顶栏图标的角标显示方式
   group_topbar_pinned_channels: 顶栏常驻分区
-  topbar_pinned_channels_desc: 可以将 Logo 展开中的分区固定在顶栏外侧，并自定义显示顺序。
+  topbar_pinned_channels_desc: 可以将 Logo 展开中的分区固定在顶栏外侧，并自定义显示顺序。空间不足时靠后分区优先折叠隐藏。
   topbar_pinned_channels_title: 常驻分区
-  topbar_pinned_channels_hint: 点击卡片即可固定或取消，点击顺序决定展示顺序。靠后的分区会在空间不足时优先隐藏。
-  topbar_pinned_channels_all_selected: 所有可用分区都已添加。
   topbar_pinned_channels_empty: 还没有添加任何常驻分区。
   topbar_pinned_channels_order_tip: 拖拽胶囊调整显示顺序
   topbar_pinned_channels_add: 添加常驻分区
   topbar_pinned_channels_dialog_title: 选择常驻分区
-  topbar_pinned_channels_dialog_desc: 点击分区快速添加或取消；在主界面可拖拽胶囊调整显示顺序。
+  topbar_pinned_channels_dialog_desc: 点击分区快速添加或取消；在设置面板中可拖拽胶囊调整显示顺序。
   topbar_pinned_channels_count_hint: 已常驻 {count} 个分区
   topbar_pinned_channels_remove: 移除
   top_bar_logo_style: Logo 样式
