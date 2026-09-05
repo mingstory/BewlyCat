@@ -334,8 +334,8 @@ settings:
     inherit: 跟隨動態卡片
   group_moments_wanted_users: 想看分組
   group_moments_wanted_users_desc: 管理想看的 UP 主；支援輸入 UID 或暱稱，名單僅儲存在本機。
-  moments_enable_wanted_filter: 啟用想看篩選
-  moments_enable_wanted_filter_desc: 在動態頁橫向欄顯示「想看」入口，用來只查看名單內 UP 主的動態；關閉後會隱藏入口並退出想看篩選。
+  moments_enable_wanted_filter: 顯示「想看」按鈕
+  moments_enable_wanted_filter_desc: 在動態頁橫向欄顯示「想看」按鈕，用來只查看名單內 UP 主的動態；關閉後會直接移除按鈕並退出想看篩選。
   moments_wanted_users: 想看的 UP 主
   group_moments_pinned_users: 固定 UP 主
   group_moments_pinned_users_desc: 管理固定在動態欄右側的 UP 主；支援輸入 UID 或暱稱，名單僅儲存在本機。
@@ -440,9 +440,6 @@ settings:
   video_card_shadow_reset: 重設陰影設定
   video_card_layout: 影片卡片版型
   video_card_layout_desc: 在新版與舊版影片卡片呈現之間切換。
-  release_offscreen_images: 回收離屏封面記憶體
-  release_offscreen_images_desc: 影片封面離開保留範圍後卸載圖片資源，降低長清單記憶體用量。
-  release_offscreen_images_warning: 警告：離屏回收記憶體可能造成圖片重新渲染時的效能卡頓，預設不回收。
   video_card_layout_option:
     modern: 新版
     old: 經典版
@@ -498,9 +495,9 @@ settings:
   only_cover_video_preview: 僅封面影片預覽
   show_video_card_author_avatar: 顯示使用者頭像
   show_video_card_author_name: 顯示使用者暱稱
-  show_video_card_video_tag: 顯示影片標籤（搜尋結果頁）
-  show_video_card_video_tag_desc: 顯示搜尋頁等情境提供的影片分類標籤。
-  show_video_card_recommend_tag: 顯示插件計算的推薦標籤
+  show_video_card_video_tag: 顯示 API 與搜尋標籤
+  show_video_card_video_tag_desc: 顯示 API 提供的推薦理由、狀態或分區標籤，以及搜尋頁的影片內容標籤。
+  show_video_card_recommend_tag: 顯示插件計算標籤
   show_video_card_recommend_tag_desc: 顯示插件計算的標籤，如「高讚」、「高互動」、「百萬播放」等
   show_video_card_publish_time: 顯示發布時間
   show_video_card_view_count: 顯示播放量
@@ -639,7 +636,7 @@ settings:
   authorize_app_more_info_access_key: 關於 access key
   scan_qrcode_desc: 使用 Bilibili 手機應用程式掃描這個行動條碼，以授權取得 access key。
   show_recommendation_filter_risk_warning: 顯示過濾風控警告
-  show_recommendation_filter_risk_warning_desc: 累計檢查 100 條有效推薦後，如果設定中的過濾條件保留少於 50 條，則提示頻繁請求的風控風險。
+  show_recommendation_filter_risk_warning_desc: 推薦列表已有足夠有效影片填滿視口後，載入更多時連續兩批全部被過濾，或累計檢查 100 條有效推薦後保留少於 50 條時，提示頻繁請求的風控風險。
   disable_filters_for_followed_users: 正在跟隨的使用者不受過濾條件限制
   disable_filters_for_followed_users_desc: |
     如果啟用此選項，正在跟隨的使用者不受過濾條件限制。
@@ -1154,7 +1151,7 @@ video_card:
 home:
   app_authorization_required: App 模式的 access token 已遺失或過期，請重新授權後繼續使用個人化推薦
   reauthorize_app: 重新授權
-  recommendation_filter_risk_warning: 目前過濾條件在 100 條有效推薦中只保留了 {count} 條，容易頻繁請求並觸發介面風控，建議適度放寬過濾條件。
+  recommendation_filter_risk_warning: 目前過濾條件在 {total} 條有效推薦中只保留了 {count} 條，容易頻繁請求並觸發介面風控，建議適度放寬過濾條件。
   tell_us_why: 為什麼這樣做...
   not_interested_desc: >
     你可以用 <kbd>↑</kbd> 和 <kbd>↓</kbd> 來選擇原因，或者直接使用數字鍵來選擇原因，按 <kbd>Enter</kbd>
@@ -1258,11 +1255,15 @@ favorites:
   sidebar_manage_exit: 退出管理
   select_all: 全選
   unselect_all: 取消全選
-  rename_folder: 重新命名
-  rename_folder_dialog_title: 重新命名收藏夾
-  rename_folder_placeholder: 請輸入收藏夾名稱
-  rename_folder_empty: 收藏夾名稱不能為空
-  default_folder_locked: 預設收藏夾不可重新命名或刪除
+  edit_folder: 編輯收藏夾
+  edit_folder_dialog_title: 編輯收藏夾
+  edit_folder_placeholder: 請輸入收藏夾名稱
+  edit_folder_empty: 收藏夾名稱不能為空
+  folder_visibility: 收藏夾可見性
+  folder_visibility_desc: 公開收藏夾可供其他使用者查看
+  folder_public: 公開
+  folder_private: 私密
+  default_folder_locked: 預設收藏夾不可編輯或刪除
   delete_folders_confirm: |-
     要刪除已選的 {count} 個收藏夾嗎？
     夾內影片的收藏關係將一併移除，該操作無法撤銷。
@@ -1392,11 +1393,26 @@ moments:
   go_charge: 去充電
   vote_ongoing: 進行中
   vote_ended: 已結束
+  vote_loading: 正在載入投票
+  vote_load_failed: 投票載入失敗
+  vote_retry: 重試
+  vote_participants: '{count} 人參與'
+  vote_select_up_to: '最多選擇 {count} 項'
+  vote_submit: 投票
+  vote_submitted: 已投票
+  vote_selected: 你選擇了此項
+  vote_time_day: '{count}天'
+  vote_time_hour: '{count}小時'
+  vote_time_minute: '{count}分鐘'
+  vote_ends_in: '{time}後截止'
+  login_to_vote: 登入後才能參與投票
+  vote_submit_failed: 投票失敗，請稍後再試
+  vote_submit_succeeded: 投票成功
   forwarded_post: 轉發了動態
   bilibili_user: B站使用者
   original_author: 原作者
   live_post: 直播動態
-  video_post: 影片動態
+  video_post: 投稿了影片
   image_post: 圖文動態
   text_post: 純文字動態
   original_post: 原動態
@@ -1417,7 +1433,7 @@ moments:
   followers: 粉絲
   posts: 動態
   publish: 發布動態
-  live_now: 正在直播
+  live_now: 直播中
   group_label: 動態分組
   all_posts: 全部動態
   wanted_only: 只看想看的 UP 主
@@ -1455,7 +1471,23 @@ moments:
   fit_window: 適應視窗
   rotate_clockwise: 順時針旋轉
 moment_card:
-  video_post: 影片動態
+  comment_sex_male: 男
+  comment_sex_female: 女
+  expand_comment_replies: 共 {count} 則回覆，點擊展開
+  collapse_comment_replies: 收起回覆
+  collapse_comments: 收起留言
+  comments_preview: 留言預覽
+  comments_unavailable: 暫時無法取得此動態的留言區
+  comments_load_failed: 留言載入失敗
+  comment_like_failed: 留言按讚失敗，請稍後重試
+  comment_host: 樓主
+  expand_comment_thread: 展開此留言及回覆
+  collapse_comment_thread: 收起此留言及回覆
+  comment_image: 檢視留言圖片 {index}
+  comments_retry: 重試
+  load_comment_replies: 載入更多回覆
+  comments_empty: 暫無留言
+  video_post: 投稿了影片
   cancel_reservation: 取消預約
   reserve: 預約
   open_space: 開啟 {name} 的空間
@@ -1463,8 +1495,6 @@ moment_card:
   charging_exclusive: 充電專屬
   added_watch_later: 已加入稍後再看
   add_watch_later: 加入稍後再看
-  added: 已加入
-  watch_later: 稍後再看
   live_post: 直播動態
   open_original_video: '開啟原影片：{title}'
   author_images: '{name} 的動態圖片'
@@ -1481,6 +1511,8 @@ moment_card:
   live_popularity: '直播人氣 {value}'
   no_data: 暫無資料
   live_now: 直播中
+  expand_text: 展開正文
+  collapse_text: 收合正文
   like_unsupported: 此動態暫不支援按讚
   unlike: 取消按讚
   like: 按讚
@@ -1529,3 +1561,4 @@ inject:
   of: 共
   loading: 載入中…
   load_more: 載入更多
+  expand_all_replies: 展開全部回覆

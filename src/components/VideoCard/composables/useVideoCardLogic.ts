@@ -15,7 +15,8 @@ import { getCSRF, removeHttpFromUrl } from '~/utils/main'
 import { resolvePgcEpisodeVideoIds } from '~/utils/pgcEpisode'
 import { openLinkInBackground } from '~/utils/tabs'
 
-import type { Video } from '../types'
+import type { Video, VideoCardState } from '../types'
+import { createVideoCardState } from '../types'
 import { getCurrentTime, getCurrentVideoUrl } from '../utils'
 import { releaseVideoPreviewCacheEntry, retainVideoPreviewCacheEntry } from './videoPreviewCache'
 
@@ -48,7 +49,7 @@ function createAppFeedFeedbackParams(video: Video, selection?: AppFeedFeedbackSe
   }
 }
 
-export function useVideoCardLogic(propsOrGetter: MaybeRefOrGetter<VideoCardProps>) {
+export function useVideoCardLogic(propsOrGetter: MaybeRefOrGetter<VideoCardProps>, savedState?: VideoCardState) {
   const toast = useToast()
   const { openIframeDrawer } = useBewlyApp()
   const topBarStore = useTopBarStore()
@@ -63,13 +64,14 @@ export function useVideoCardLogic(propsOrGetter: MaybeRefOrGetter<VideoCardProps
   // Refs
   const showVideoOptions = ref<boolean>(false)
   const videoOptionsFloatingStyles = ref<CSSProperties>({})
-  const removed = ref<boolean>(false)
+  const interactionState = savedState ?? reactive(createVideoCardState())
+  const removed = toRef(interactionState, 'removed')
   const moreBtnRef = ref<HTMLButtonElement | null>(null)
   const contextMenuRef = ref<HTMLDivElement | null>(null)
-  const selectedDislikeOpt = ref<AppFeedFeedbackSelection>()
-  const videoCurrentTime = ref<number | null>(null)
-  const isInWatchLater = ref<boolean>(false)
-  const resolvedWatchLaterAid = ref<number>()
+  const selectedDislikeOpt = toRef(interactionState, 'selectedDislikeOpt')
+  const videoCurrentTime = toRef(interactionState, 'videoCurrentTime')
+  const isInWatchLater = toRef(interactionState, 'isInWatchLater')
+  const resolvedWatchLaterAid = toRef(interactionState, 'resolvedWatchLaterAid')
   const isHover = ref<boolean>(false)
   const isPreviewFullscreen = ref<boolean>(false)
   const mouseEnterTimeOut = ref<number | null>(null)
@@ -78,16 +80,16 @@ export function useVideoCardLogic(propsOrGetter: MaybeRefOrGetter<VideoCardProps
   const videoElement = ref<HTMLVideoElement | null>(null)
   const cardRootRef = ref<HTMLElement | null>(null)
   const isDisposed = ref<boolean>(false) // 跟踪组件是否已卸载
+  const isActive = ref(true)
   const previewCacheKey = Symbol('video-preview-cache')
 
   function clearPreviewVideoUrl() {
     previewVideoUrl.value = ''
   }
 
-  // 清理函数 - 在组件卸载时调用
-  onScopeDispose(() => {
-    isDisposed.value = true
+  function resetPreviewState() {
     releaseVideoPreviewCacheEntry(previewCacheKey)
+    clearPreviewVideoUrl()
 
     // 清除所有待处理的超时
     if (mouseEnterTimeOut.value) {
@@ -101,6 +103,19 @@ export function useVideoCardLogic(propsOrGetter: MaybeRefOrGetter<VideoCardProps
 
     // 重置hover状态
     isHover.value = false
+    isPreviewFullscreen.value = false
+  }
+
+  onDeactivated(() => {
+    isActive.value = false
+    resetPreviewState()
+  })
+  onActivated(() => {
+    isActive.value = true
+  })
+  onScopeDispose(() => {
+    isDisposed.value = true
+    resetPreviewState()
   })
 
   // Computed
@@ -170,13 +185,27 @@ export function useVideoCardLogic(propsOrGetter: MaybeRefOrGetter<VideoCardProps
       .filter((mid): mid is number => typeof mid === 'number')
   }
 
+  const previewIdentity = computed(() => {
+    const video = props.value.video
+    return [video?.bvid, video?.aid, video?.cid, video?.roomid, video?.epid].join(':')
+  })
+
   // Watch
-  watch(() => isHover.value, async (newValue) => {
+  watch([isHover, previewIdentity], async ([newValue, identity], [, previousIdentity], onCleanup) => {
+    let cancelled = false
+    onCleanup(() => {
+      cancelled = true
+    })
+    const isStale = () => cancelled || isDisposed.value || !isActive.value || !isHover.value
+
+    if (identity !== previousIdentity)
+      clearPreviewVideoUrl()
+
     if (!props.value.video || !newValue)
       return
 
     // 如果组件已卸载，不执行任何操作
-    if (isDisposed.value)
+    if (isStale())
       return
 
     // Moments feed preview control: Only load preview if video belongs to selected uploader
@@ -205,7 +234,7 @@ export function useVideoCardLogic(propsOrGetter: MaybeRefOrGetter<VideoCardProps
             qn: 80, // 流畅画质，适合预览
           })
           // 再次检查是否已卸载
-          if (isDisposed.value || !isHover.value)
+          if (isStale())
             return
           if (res.code === 0 && res.data.durl && res.data.durl.length > 0) {
             previewVideoUrl.value = res.data.durl[0].url
@@ -224,7 +253,7 @@ export function useVideoCardLogic(propsOrGetter: MaybeRefOrGetter<VideoCardProps
               bvid: props.value.video.bvid,
             })
             // 检查是否已卸载
-            if (isDisposed.value || !isHover.value)
+            if (isStale())
               return
             if (res.code === 0)
               cid = res.data.cid
@@ -234,18 +263,22 @@ export function useVideoCardLogic(propsOrGetter: MaybeRefOrGetter<VideoCardProps
           }
         }
         // 如果组件已卸载，不发起请求
-        if (isDisposed.value)
+        if (isStale())
           return
-        api.video.getVideoPreview({
-          bvid: props.value.video.bvid,
-          cid,
-        }).then((res: VideoPreviewResult) => {
+        try {
+          const res: VideoPreviewResult = await api.video.getVideoPreview({
+            bvid: props.value.video.bvid,
+            cid,
+          })
           // 检查是否已卸载，已卸载则不更新状态
-          if (isDisposed.value || !isHover.value)
+          if (isStale())
             return
           if (res.code === 0 && res.data.durl && res.data.durl.length > 0)
             previewVideoUrl.value = res.data.durl[0].url
-        })
+        }
+        catch {
+          // Preview requests can fail after leaving the card or closing the page.
+        }
       }
     }
   })
@@ -417,11 +450,11 @@ export function useVideoCardLogic(propsOrGetter: MaybeRefOrGetter<VideoCardProps
     showVideoOptions.value = false
     videoOptionsFloatingStyles.value = {
       position: 'fixed',
-      top: `${position.top}px`,
+      top: position.top,
+      bottom: position.bottom,
       left: `${position.left}px`,
       width: `${position.width}px`,
       maxHeight: `${position.maxHeight}px`,
-      transform: position.transform,
     }
     showVideoOptions.value = true
   }
