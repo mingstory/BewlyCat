@@ -5,22 +5,24 @@ import { createApp } from 'vue'
 
 import { useDark } from '~/composables/useDark'
 import { CONTENT_SCRIPT_PING, CONTENT_SCRIPT_PONG } from '~/constants/contentScript'
-import { BEWLY_MOUNTED, IFRAME_DARK_MODE_CHANGE, IFRAME_TOP_BAR_CHANGE } from '~/constants/globalEvents'
+import { BEWLY_IFRAME_DRAWER_HOST_CLASS, BEWLY_MOUNTED, IFRAME_DARK_MODE_CHANGE, IFRAME_TOP_BAR_CHANGE } from '~/constants/globalEvents'
 import { localSettings, settings, settingsReady } from '~/logic'
 import { setupApp } from '~/logic/common-setup'
 import { useTopBarStore } from '~/stores/topBarStore'
 import RESET_BEWLY_CSS from '~/styles/reset.css?raw'
 import api from '~/utils/api'
-import { applyBewlyWidescreen, exitBewlyWidescreen, isBewlyWidescreenActive, prepareBewlyWidescreenLoading } from '~/utils/bewlyWidescreen'
+import { applyBewlyWidescreen, BEWLY_WIDESCREEN_USER_EXIT, exitBewlyWidescreen, isBewlyWidescreenActive, isBewlyWidescreenEngaged, prepareBewlyWidescreenLoading } from '~/utils/bewlyWidescreen'
 import { cleanupBilibiliScripts } from '~/utils/bilibiliScriptCleanup'
 import { captureOriginalBilibiliTopBar, ensureOriginalBilibiliTopBarAppended, resetBilibiliTopBarInlineStyles, setupLoginButtonClickHandlers, shouldShowOriginalBilibiliTopBar } from '~/utils/bilibiliTopBar'
+import { findLeafActiveElement } from '~/utils/element'
 import { initFavoriteDialogEnhancement } from '~/utils/favoriteDialog'
 import { i18n } from '~/utils/i18n'
 import { runWhenIdle } from '~/utils/lazyLoad'
 import { getLocalWallpaper, hasLocalWallpaper, isLocalWallpaperUrl } from '~/utils/localWallpaper'
-import { compareVersions, getCookie, injectCSS, isElectron, isHomePage, isInIframe, isNotificationPage, isVideoOrBangumiPage, isVideoPlaybackPage, isWatchLaterListPage } from '~/utils/main'
+import { getCookie, injectCSS, isElectron, isHomePage, isInIframe, isNotificationPage, isVideoOrBangumiPage, isVideoPlaybackPage, isWatchLaterListPage } from '~/utils/main'
 import { initNativeFavoriteSeasonPlayAllIntercept } from '~/utils/nativeFavoriteSeasonPlayAll'
 import { createPageSettingsPayload } from '~/utils/pageSettingsProtocol'
+import { isPhotoViewerOpen } from '~/utils/photoViewer'
 import { applyAutoPlayByVideoType, applyDefaultCaptionState, applyDefaultDanmakuState, applyRememberedPlaybackRate, defaultMode, getVideoElement, handleVideoPageNavigation, isPlayerDisplayModeReady, isVideoPage, resetAutoPlayUserChangeFlag, resolveDefaultVideoPlayerMode, startAutoExitFullscreenMonitoring, startAutoPlayUserChangeMonitoring, startPlaybackRateMonitoring, webFullscreen, widescreen } from '~/utils/player'
 import { applyPreservedOrDefaultCustomPlay, applyRandomPlayActivationSettings, destroyRandomPlay, initRandomPlay, isCustomPlayPage, resetRandomPlayInitialization, syncRandomPlayOrder, syncRandomPlayUI } from '~/utils/randomPlay'
 import { getPluginSearchResultsUrl, navigateToPluginSearchResultsInPlace, openSearchResults, shouldUsePluginSearchResultsPage } from '~/utils/searchNavigation'
@@ -52,15 +54,25 @@ function disposeBewlyHost(element: Element) {
 }
 
 const contentScriptGlobal = globalThis as typeof globalThis & {
+  __BEWLYCAT_BUNDLED_STYLE_TEXT__: string
   __BEWLYCAT_CONTENT_SCRIPT_INITIALIZED__?: boolean
 }
 const shouldInitializeContentScript = !contentScriptGlobal.__BEWLYCAT_CONTENT_SCRIPT_INITIALIZED__
+const bundledShadowStyleText = contentScriptGlobal.__BEWLYCAT_BUNDLED_STYLE_TEXT__
+const contentScriptManifest = browser.runtime.getManifest()
+const contentScriptRuntimeUrl = browser.runtime.getURL('')
 
 if (shouldInitializeContentScript) {
   contentScriptGlobal.__BEWLYCAT_CONTENT_SCRIPT_INITIALIZED__ = true
   browser.runtime.onMessage.addListener((message: unknown) => {
-    if (typeof message === 'object' && message !== null && 'type' in message && message.type === CONTENT_SCRIPT_PING)
-      return Promise.resolve({ type: CONTENT_SCRIPT_PONG, version })
+    if (typeof message === 'object' && message !== null && 'type' in message && message.type === CONTENT_SCRIPT_PING) {
+      return Promise.resolve({
+        name: contentScriptManifest.name,
+        runtimeUrl: contentScriptRuntimeUrl,
+        type: CONTENT_SCRIPT_PONG,
+        version,
+      })
+    }
 
     return false
   })
@@ -179,8 +191,9 @@ if (isElectronEnv) {
   console.warn('[BewlyCat] Detected Electron environment, extension disabled.')
 }
 else if (shouldInitializeContentScript) {
-  const playerModeLoadSettleDelay = 500
-  const videoOwnerAvatarReadyTimeout = 8000
+  const playerModeLoadSettleDelay = 200
+  const playerModeReadinessRetryInterval = 200
+  const videoOwnerAvatarReadyTimeout = 4000
   const nativeVideoHeaderStableDelay = 2000
   const replacedNativeVideoHeaderStableDelay = 400
   const videoOwnerAvatarSelector = [
@@ -241,7 +254,7 @@ else if (shouldInitializeContentScript) {
   let playerModeResumeQueued = false
   let watchLaterButtonAdded = false // 标记稍后再看按钮是否已添加
 
-  // 设置水合后立即同步 i18n 语言。宽屏遮罩等轻 DOM 元素在 App 挂载前就会
+  // 设置水合后立即同步 i18n 语言。宽屏切换提示等轻 DOM 元素在 App 挂载前就会
   // 用 t() 渲染一次性文案，若等到 App.vue 里的语言 watcher 才切换 locale，
   // 这些元素会以默认英文显示。Promise 回调按注册顺序执行，需先于下方
   // applyDefaultPlayerMode 的回调注册。
@@ -315,7 +328,11 @@ else if (shouldInitializeContentScript) {
     return shouldApply
   }
 
-  if (isSupportedPages() || isSupportedIframePages()) {
+  // 原生页面的适配也要等真实设置，避免启动时短暂套用默认开启的样式。
+  void settingsReady.then(() => {
+    if (!isSupportedPages() && !isSupportedIframePages())
+      return
+
     if (settings.value.adaptToOtherPageStyles || settings.value.videoPageDarkMode)
       useDark()
 
@@ -337,35 +354,13 @@ else if (shouldInitializeContentScript) {
           document.head.removeChild(darkModeStyle)
       })
     }
-  }
+  })
 
   // 挂载完成与保险丝两条路径共用的清理，重复调用无副作用
   function removeBeforeLoadedStyleEl() {
     beforeLoadedStyleEl?.remove()
     beforeLoadedStyleEl = undefined
     clearTimeout(beforeLoadedStyleFailsafeTimer)
-  }
-
-  if (settings.value.adaptToOtherPageStyles && isHomePage()) {
-    beforeLoadedStyleEl = injectCSS(`
-    html.bewly-design {
-      background-color: var(--bew-bg);
-      transition: background-color 0.2s ease-in;
-    }
-
-    body {
-      display: none;
-    }
-  `)
-
-    // Add opacity transition effect for page loaded
-    injectCSS(`
-    body {
-      transition: opacity 0.5s;
-    }
-  `)
-    // Failsafe: never keep the page hidden for too long.
-    beforeLoadedStyleFailsafeTimer = setTimeout(removeBeforeLoadedStyleEl, 4000)
   }
 
   window.addEventListener(BEWLY_MOUNTED, () => {
@@ -392,11 +387,13 @@ else if (shouldInitializeContentScript) {
     })
   }
 
-  function resetNativeVideoHeaderStability() {
-    nativeVideoHeaderCandidate = null
-    nativeVideoHeaderStableSince = 0
-    nativeVideoHeaderObserved = false
-    nativeVideoHeaderReplacementObserved = false
+  function resetNativeVideoHeaderStability(resetObservation = true) {
+    if (resetObservation) {
+      nativeVideoHeaderCandidate = null
+      nativeVideoHeaderStableSince = 0
+      nativeVideoHeaderObserved = false
+      nativeVideoHeaderReplacementObserved = false
+    }
     nativeVideoHeaderReadyDeadline = Date.now() + videoOwnerAvatarReadyTimeout
   }
 
@@ -432,7 +429,7 @@ else if (shouldInitializeContentScript) {
 
   function initBewlyWidescreenControlWhenPageStable() {
     if (isVideoOrBangumiPage() && !isNativeVideoHeaderStable()) {
-      window.setTimeout(initBewlyWidescreenControlWhenPageStable, 500)
+      window.setTimeout(initBewlyWidescreenControlWhenPageStable, playerModeReadinessRetryInterval)
       return
     }
 
@@ -441,7 +438,7 @@ else if (shouldInitializeContentScript) {
 
   function applyEndPlaybackBehaviorWhenPageStable() {
     if (isVideoOrBangumiPage() && !isNativeVideoHeaderStable()) {
-      window.setTimeout(applyEndPlaybackBehaviorWhenPageStable, 500)
+      window.setTimeout(applyEndPlaybackBehaviorWhenPageStable, playerModeReadinessRetryInterval)
       return
     }
 
@@ -498,6 +495,15 @@ else if (shouldInitializeContentScript) {
   }
 
   function applyDefaultPlayerMode() {
+    // iframe 抽屉会把父页面地址栏临时替换成视频 URL。父文档没有播放器，
+    // 不能在这里准备宽屏 loading；真正的播放器模式由 iframe 自己负责。
+    if (document.documentElement.classList.contains(BEWLY_IFRAME_DRAWER_HOST_CLASS)) {
+      clearPlayerModeRetry()
+      clearPlaybackBehaviorTimer()
+      exitBewlyWidescreen()
+      return
+    }
+
     if (!isVideoOrBangumiPage()) {
       clearPlayerModeRetry()
       clearPlaybackBehaviorTimer()
@@ -506,7 +512,7 @@ else if (shouldInitializeContentScript) {
     }
 
     // 后台新标签页中，load / pageshow 可能早于 B 站播放器和评论组件恢复。
-    // 先等设置和可见状态，默认 Bewly 宽屏则立即用遮罩盖住原始布局。
+    // 先等设置和可见状态，默认 Bewly 宽屏则立即显示居中的 loading。
     if (!playerModeSettingsReady
       || document.visibilityState !== 'visible') {
       clearPlayerModeRetry()
@@ -517,6 +523,16 @@ else if (shouldInitializeContentScript) {
     if (lastAppliedPlayerModeNavigationKey === currentNavigationKey)
       return
 
+    // 当前视频已经进入 Bewly 宽屏时，将它视为已完成的播放器模式选择。
+    // 尤其是抽屉 iframe 在标签页恢复可见后，不应再用默认模式覆盖用户当前
+    // 的宽屏布局，否则原生网页全屏会先退出 Bewly 宽屏并重新触发 loading。
+    if (isBewlyWidescreenActive()) {
+      clearPlayerModeRetry()
+      applyPlayerModeCompanionSettings()
+      lastAppliedPlayerModeNavigationKey = currentNavigationKey
+      return
+    }
+
     let targetPlayerMode = resolveDefaultVideoPlayerMode()
     if (isFestivalPage() && targetPlayerMode === 'bewlyWidescreen')
       targetPlayerMode = 'widescreen'
@@ -526,7 +542,7 @@ else if (shouldInitializeContentScript) {
     const isInWebFullscreen = webFullscreenBtn?.classList.contains('bpx-state-entered')
 
     if (targetPlayerMode === 'bewlyWidescreen' && !isInFullscreen && !isInWebFullscreen) {
-      // 遮罩仅覆盖视觉，不搬动 B 站 DOM；自定义播放器仍在下方等待最终顶栏稳定。
+      // loading 不搬动 B 站 DOM；自定义播放器仍在等待最终顶栏稳定。
       prepareBewlyWidescreenLoading()
     }
     else if (!isBewlyWidescreenActive()) {
@@ -585,7 +601,7 @@ else if (shouldInitializeContentScript) {
         case 'bewlyWidescreen':
           applyBewlyWidescreen(
             settings.value.bewlyWidescreenSidebarPosition || 'right',
-            // 遮罩已在等待阶段挂载，并保持到宽屏布局完成。
+            // loading 已在等待阶段挂载，并保持到宽屏布局完成。
             false,
           )
           break
@@ -617,15 +633,30 @@ else if (shouldInitializeContentScript) {
     playerModeRetryTimer = setTimeout(() => {
       playerModeRetryTimer = undefined
       applyDefaultPlayerMode()
-    }, delay ?? 500)
+    }, delay ?? playerModeReadinessRetryInterval)
   }
 
-  function waitForPlayerModePageSettle() {
+  window.addEventListener(BEWLY_WIDESCREEN_USER_EXIT, () => {
+    const currentNavigationKey = getVideoNavigationKey(location.href)
+    if (!currentNavigationKey)
+      return
+
+    // 用户主动退出会终止当前视频的默认宽屏初始化。否则头部/播放器就绪
+    // 检查留下的重试会再次挂载 loading，并重新进入 Bewly 宽屏。
+    clearPlayerModeRetry()
+    lastAppliedPlayerModeNavigationKey = currentNavigationKey
+    queueMicrotask(() => {
+      if (getVideoNavigationKey(location.href) === currentNavigationKey)
+        applyPlayerModeCompanionSettings()
+    })
+  })
+
+  function waitForPlayerModePageSettle(resetHeaderObservation = true) {
     clearPlayerModeRetry()
     clearPlaybackBehaviorTimer()
     playerModeReadyAfter = Date.now() + playerModeLoadSettleDelay
     videoOwnerAvatarReadyDeadline = Date.now() + videoOwnerAvatarReadyTimeout
-    resetNativeVideoHeaderStability()
+    resetNativeVideoHeaderStability(resetHeaderObservation)
   }
 
   // 添加稍后再看按钮
@@ -958,7 +989,9 @@ else if (shouldInitializeContentScript) {
 
   // 添加页面加载监听
   window.addEventListener('load', () => {
-    waitForPlayerModePageSettle()
+    // DOMContentLoaded 后已经开始观察原生顶栏；完整加载时沿用这段观察时间，
+    // 避免把安全稳定期清零后再无条件多等一轮。
+    waitForPlayerModePageSettle(false)
     if (isVideoPage()) {
       applyDefaultPlayerMode()
     }
@@ -1154,6 +1187,21 @@ else if (shouldInitializeContentScript) {
 
     // 启用自定义首页时隐藏 B 站原始首页。
     if (changeHomePage) {
+      // 等真实设置就绪后，仅在外层自定义首页防闪烁。原生首页（含 iframe）
+      // 必须保留布局，否则 B 站初始化时会把悬浮工具栏算到视口外（#1178）。
+      if (settings.value.adaptToOtherPageStyles) {
+        beforeLoadedStyleEl = injectCSS(`
+          html.bewly-custom-homepage.bewly-design {
+            background-color: var(--bew-bg);
+          }
+          html.bewly-custom-homepage > body {
+            opacity: 0;
+            pointer-events: none;
+          }
+        `)
+        beforeLoadedStyleFailsafeTimer = setTimeout(removeBeforeLoadedStyleEl, 4000)
+      }
+
       // 移动端缺少 viewport 声明时会按 980px 排版后整体缩放，导致响应式断点失效。
       ensureResponsiveViewport(document)
 
@@ -1169,18 +1217,18 @@ else if (shouldInitializeContentScript) {
       // 避免「半隐藏的 B 站首页 Vue 树」与自定义首页双开抢资源。
       injectCSS(`
       /* 自定义首页始终以当前可视视口为尺寸基准，避免原站最小宽度撑大文档。 */
-      html,
-      body {
+      html.bewly-custom-homepage,
+      html.bewly-custom-homepage > body {
         width: 100% !important;
         min-width: 0 !important;
         max-width: 100% !important;
         overflow-x: hidden !important;
       }
       /* Hide Bilibili's own page elements, preserving third-party extensions (e.g., Bili-Evolved) */
-      body > #app,
-      body > #i_cecream,
-      .home-redesign-base,
-      .bilibili-gate-root {
+      html.bewly-custom-homepage > body > #app,
+      html.bewly-custom-homepage > body > #i_cecream,
+      html.bewly-custom-homepage .home-redesign-base,
+      html.bewly-custom-homepage .bilibili-gate-root {
         display: none !important;
         visibility: hidden !important;
         pointer-events: none !important;
@@ -1188,7 +1236,7 @@ else if (shouldInitializeContentScript) {
         left: -9999px !important;
       }
       /* 顶栏 portal 到 body 后的定位；显隐由 .remove-top-bar 控制 */
-      body > .bili-header {
+      html.bewly-custom-homepage > body > .bili-header {
         position: relative !important;
         left: 0 !important;
         pointer-events: auto !important;
@@ -1274,29 +1322,17 @@ else if (shouldInitializeContentScript) {
   }
 
   function injectApp() {
-    const isDev = import.meta.env.DEV
     const bewlyElArr: NodeListOf<Element> = document.querySelectorAll('#bewly')
-    if (bewlyElArr.length > 0) {
-      bewlyElArr.forEach((el: Element) => {
-        const elVersion = el.getAttribute('data-version') || '0.0.0'
-        const elIsDev = el.getAttribute('data-dev') === 'true'
-
-        // Remove bewly element if the version is less than the current version
-        if (compareVersions(elVersion, version) < 0)
-          disposeBewlyHost(el)
-        // 同模式重复注入的旧宿主已过期：dev 不清除会越堆越多，
-        // watcher 的 querySelector('#bewly') 命中陈旧的第一个宿主，
-        // 内联 CSS 变量（如 --bew-filter-glass-1 毛玻璃强度）到不了实际渲染的宿主。
-        else if (!elIsDev || isDev)
-          disposeBewlyHost(el)
-      })
-    }
+    // The page can retain a host from a previous add-on version or from a Dev ↔
+    // production switch. Keeping either one creates duplicate #bewly elements,
+    // after which shared watchers target the stale host and the new UI loses its
+    // layout variables. The content script that mounts last owns the single host.
+    bewlyElArr.forEach(disposeBewlyHost)
 
     // mount component to context window
     const container = document.createElement('div') as BewlyHostElement
     container.id = 'bewly'
     container.setAttribute('data-version', version)
-    container.setAttribute('data-dev', import.meta.env.DEV ? 'true' : 'false')
 
     // 立即设置Shadow DOM容器的基准颜色，确保Vue组件能够访问到正确的CSS变量
     if (settings.value.darkModeBaseColor) {
@@ -1323,26 +1359,17 @@ else if (shouldInitializeContentScript) {
       })
     }
 
-    const styleEl = document.createElement('link')
     // Fix #69 https://github.com/hakadao/BewlyBewly/issues/69
     // https://medium.com/@emilio_martinez/shadow-dom-open-vs-closed-1a8cf286088a - open shadow dom
     const shadowDOM = container.attachShadow?.({ mode: 'open' }) || container
     const resetStyleEl = document.createElement('style')
     resetStyleEl.textContent = `${RESET_BEWLY_CSS}`
-    styleEl.setAttribute('rel', 'stylesheet')
-    styleEl.setAttribute('href', browser.runtime.getURL('dist/contentScripts/style.css'))
+    const styleEl = document.createElement('style')
+    styleEl.setAttribute('data-bewly-bundled-styles', '')
+    styleEl.textContent = bundledShadowStyleText
     shadowDOM.appendChild(resetStyleEl)
     shadowDOM.appendChild(styleEl)
     shadowDOM.appendChild(root)
-
-    // 样式就绪前隐藏整个 Shadow DOM，避免未应用样式的内容闪现。
-    // 就绪后一次性展示，避免容器淡入与壁纸遮罩透明度叠加，造成遮罩延迟出现。
-    container.style.visibility = 'hidden'
-    const revealContainer = () => {
-      container.style.visibility = 'visible'
-    }
-    styleEl.addEventListener('load', revealContainer, { once: true })
-    styleEl.addEventListener('error', revealContainer, { once: true })
 
     // startShadowDOMStyleInjection()
 
@@ -1388,7 +1415,7 @@ else if (shouldInitializeContentScript) {
   void settingsReady.then(() => {
     const registerCustomPlaybackSettingsWatcher = () => {
       if (isVideoOrBangumiPage() && !isNativeVideoHeaderStable()) {
-        window.setTimeout(registerCustomPlaybackSettingsWatcher, 500)
+        window.setTimeout(registerCustomPlaybackSettingsWatcher, playerModeReadinessRetryInterval)
         return
       }
 
@@ -1615,45 +1642,72 @@ else if (shouldInitializeContentScript) {
   const isMomentDetailPage = /https?:\/\/t\.bilibili\.com\/\d+/.test(currentUrl)
     || /https?:\/\/(?:www\.)?bilibili\.com\/opus\/\d+/.test(currentUrl)
   if (isInIframe() && (isNotificationPage() || isVideoOrBangumiPage() || isMomentDetailPage)) {
+    const playerEscapePrioritySelector = [
+      '.bpx-player-ctrl-wide.bpx-state-entered',
+      '.bilibili-player-video-btn-widescreen.bpx-state-entered',
+      '.squirtle-video-widescreen.bpx-state-entered',
+      '.bpx-player-ctrl-web.bpx-state-entered',
+      '.bilibili-player-video-web-fullscreen.bpx-state-entered',
+      '.squirtle-video-pagefullscreen.bpx-state-entered',
+      '[data-screen="wide"]',
+      '[data-screen="web"]',
+    ].join(', ')
+
+    function hasIframeEscapePriorityState() {
+      const fullscreenElement = document.fullscreenElement
+        || (document as Document & { webkitFullscreenElement?: Element | null }).webkitFullscreenElement
+
+      return !!fullscreenElement
+        || isPhotoViewerOpen()
+        || isBewlyWidescreenEngaged()
+        || (isVideoOrBangumiPage() && document.querySelector(playerEscapePrioritySelector) !== null)
+    }
+
     window.addEventListener('keydown', (e: KeyboardEvent) => {
-    // 只处理ESC键
+      // 只处理 ESC 键；长按不应被当成连续两次关闭请求。
       if (e.key !== 'Escape' && e.code !== 'Escape')
+        return
+      if (e.repeat || e.isComposing)
         return
 
       // 检查当前焦点元素
-      const activeElement = document.activeElement
+      const activeElement = findLeafActiveElement(document)
       const tagName = activeElement?.tagName?.toLowerCase()
 
       // 检查是否是输入框或可编辑元素
       const isInputElement
       = tagName === 'input'
         || tagName === 'textarea'
-        || activeElement?.hasAttribute('contenteditable')
+        || (activeElement instanceof HTMLElement && activeElement.isContentEditable)
 
       // 如果焦点在输入框内，不处理ESC键，让用户正常使用
       if (isInputElement)
         return
 
-      // 视频页面：检查视频播放器是否处于网页全屏或宽屏状态
-      if (isVideoOrBangumiPage()) {
-        const webFullBtn = document.querySelector('.bpx-player-ctrl-btn.bpx-player-ctrl-web')
-        const wideBtn = document.querySelector('.bpx-player-ctrl-btn.bpx-player-ctrl-wide')
-        const isWebFull = webFullBtn?.classList.contains('bpx-state-entered')
-        const isWide = wideBtn?.classList.contains('bpx-state-entered')
+      // 捕获阶段只记录状态，不抢占按键。等本次键盘事件完成后，再判断是否需要关闭容器。
+      // 这样 Dialog、图片预览、Bewly 宽屏及原生播放器模式都能先消费 ESC。
+      const hadEscapePriorityState = hasIframeEscapePriorityState()
+      window.setTimeout(() => {
+        const wasHandledInternally = hadEscapePriorityState
+          || hasIframeEscapePriorityState()
+          || e.cancelBubble
 
-        // 如果视频处于网页全屏或宽屏状态，让播放器自己处理ESC
-        if (isWebFull || isWide)
+        if (wasHandledInternally) {
+          window.parent.postMessage({
+            type: 'BEWLY_DRAWER_ESCAPE_HANDLED',
+            source: 'iframe',
+          }, '*')
           return
-      }
+        }
 
-      // 焦点不在输入框，通知父窗口关闭抽屉
-      e.preventDefault()
-      e.stopPropagation()
-
-      window.parent.postMessage({
-        type: 'BEWLY_DRAWER_CLOSE_REQUEST',
-        source: 'iframe',
-      }, '*')
+        // Bilibili's video page prevents the default action for every ESC,
+        // even when no visible player layer consumes it. `defaultPrevented`
+        // alone therefore cannot block the drawer close request.
+        window.parent.postMessage({
+          type: 'BEWLY_DRAWER_CLOSE_REQUEST',
+          source: 'iframe',
+        }, '*')
+      }, 0)
     }, true) // 使用捕获阶段
   }
 }

@@ -338,8 +338,8 @@ settings:
     inherit: Follow dynamic cards
   group_moments_wanted_users: Watchlist
   group_moments_wanted_users_desc: Manage uploaders you want to watch by UID or name. The list is stored only on this device.
-  moments_enable_wanted_filter: Enable watchlist filter
-  moments_enable_wanted_filter_desc: Show a Watchlist entry in the Moments horizontal bar to display only posts from watchlisted uploaders. Turning it off hides the entry and exits the filter.
+  moments_enable_wanted_filter: Show Watchlist button
+  moments_enable_wanted_filter_desc: Show the Watchlist button in the Moments horizontal bar to display only posts from watchlisted uploaders. Turning it off removes the button and exits the filter.
   moments_wanted_users: Watchlisted uploaders
   group_moments_pinned_users: Pinned uploaders
   group_moments_pinned_users_desc: Manage uploaders pinned to the right side of the Moments bar by UID or name. The list is stored only on this device.
@@ -479,9 +479,9 @@ settings:
   only_cover_video_preview: Preview videos only when hovering the cover
   show_video_card_author_avatar: Show uploader avatar
   show_video_card_author_name: Show uploader name
-  show_video_card_video_tag: Show video tags (search results page)
-  show_video_card_video_tag_desc: Show video category tags provided on search and other pages.
-  show_video_card_recommend_tag: Show plugin-calculated recommendation tags
+  show_video_card_video_tag: Show API and search tags
+  show_video_card_video_tag_desc: Show recommendation, status, or category labels from APIs and content tags from search pages.
+  show_video_card_recommend_tag: Show plugin-calculated tags
   show_video_card_recommend_tag_desc: Display tags calculated by the plugin, such as "High Engagement", "Popular", etc.
   show_video_card_publish_time: Show publish time
   show_video_card_view_count: Show view count
@@ -563,9 +563,6 @@ settings:
   video_card_shadow_reset: Reset shadow settings
   video_card_layout: Video card layout
   video_card_layout_desc: Switch between the redesigned card and the legacy layout.
-  release_offscreen_images: Reclaim offscreen cover memory
-  release_offscreen_images_desc: Unload cover image resources outside the retained range to reduce long-list memory usage.
-  release_offscreen_images_warning: 'Warning: reclaiming offscreen memory may cause stutter when images are rendered again. Images are not reclaimed by default.'
   video_card_layout_option:
     modern: Modern layout
     old: Classic layout
@@ -703,7 +700,7 @@ settings:
     Use the Bilibili mobile app to scan this QR code in order to authorize the
     access key.
   show_recommendation_filter_risk_warning: Show filter risk warnings
-  show_recommendation_filter_risk_warning_desc: After checking 100 valid recommendations, warn when the configured filters retain fewer than 50 because repeated requests may trigger risk control.
+  show_recommendation_filter_risk_warning_desc: After enough valid videos have filled the recommendation viewport, warn when two consecutive load-more batches are fully filtered out or fewer than 50 of 100 valid recommendations are retained, because repeated requests may trigger risk control.
   disable_filters_for_followed_users: Disable filters for followed users
   disable_filters_for_followed_users_desc: >
     If you enable this option, all filters you set will be disabled for the
@@ -1234,7 +1231,7 @@ video_card:
 home:
   app_authorization_required: The App mode access token is missing or expired. Re-authorize to continue using personalized recommendations.
   reauthorize_app: Re-authorize
-  recommendation_filter_risk_warning: The current filters retained only {count} of 100 valid recommendations. This may cause frequent requests and trigger API risk control. Consider relaxing the filters.
+  recommendation_filter_risk_warning: The current filters retained only {count} of {total} valid recommendations. This may cause frequent requests and trigger API risk control. Consider relaxing the filters.
   tell_us_why: Choose a reason why
   not_interested_desc: >-
     You can use <kbd>↑</kbd> and <kbd>↓</kbd> to choose the reason, or using
@@ -1341,11 +1338,15 @@ favorites:
   sidebar_manage_exit: Exit manage
   select_all: Select all
   unselect_all: Deselect all
-  rename_folder: Rename
-  rename_folder_dialog_title: Rename folder
-  rename_folder_placeholder: Enter folder name
-  rename_folder_empty: Folder name cannot be empty
-  default_folder_locked: The default folder cannot be renamed or deleted
+  edit_folder: Edit folder
+  edit_folder_dialog_title: Edit folder
+  edit_folder_placeholder: Enter folder name
+  edit_folder_empty: Folder name cannot be empty
+  folder_visibility: Folder visibility
+  folder_visibility_desc: Public folders can be viewed by other users
+  folder_public: Public
+  folder_private: Private
+  default_folder_locked: The default folder cannot be edited or deleted
   delete_folders_confirm: |-
     Delete the {count} selected folders?
     Videos in them will be unfavorited as well. This cannot be undone.
@@ -1479,11 +1480,26 @@ moments:
   go_charge: Charge now
   vote_ongoing: Ongoing
   vote_ended: Ended
+  vote_loading: Loading poll
+  vote_load_failed: Failed to load poll
+  vote_retry: Retry
+  vote_participants: '{count} participants'
+  vote_select_up_to: 'Select up to {count} options'
+  vote_submit: Vote
+  vote_submitted: Voted
+  vote_selected: You selected this option
+  vote_time_day: '{count}d '
+  vote_time_hour: '{count}h '
+  vote_time_minute: '{count}m'
+  vote_ends_in: 'Ends in {time}'
+  login_to_vote: Log in to vote
+  vote_submit_failed: Failed to vote. Please try again later.
+  vote_submit_succeeded: Vote submitted
   forwarded_post: Forwarded a post
   bilibili_user: Bilibili user
   original_author: Original author
   live_post: Live post
-  video_post: Video post
+  video_post: Uploaded a video
   image_post: Image post
   text_post: Text post
   original_post: Original post
@@ -1504,7 +1520,7 @@ moments:
   followers: Followers
   posts: Posts
   publish: Publish post
-  live_now: Live now
+  live_now: Live
   group_label: Post groups
   all_posts: All posts
   wanted_only: Wanted uploaders only
@@ -1542,7 +1558,23 @@ moments:
   fit_window: Fit to window
   rotate_clockwise: Rotate clockwise
 moment_card:
-  video_post: Video post
+  comment_sex_male: Male
+  comment_sex_female: Female
+  expand_comment_replies: View all {count} replies
+  collapse_comment_replies: Collapse replies
+  collapse_comments: Collapse comments
+  comments_preview: Comment preview
+  comments_unavailable: Comments are currently unavailable for this post
+  comments_load_failed: Failed to load comments
+  comment_like_failed: Failed to like comment. Please try again.
+  comment_host: Thread author
+  expand_comment_thread: Expand this comment and replies
+  collapse_comment_thread: Collapse this comment and replies
+  comment_image: View comment image {index}
+  comments_retry: Retry
+  load_comment_replies: Load more replies
+  comments_empty: No comments yet
+  video_post: Uploaded a video
   cancel_reservation: Cancel reservation
   reserve: Reserve
   open_space: Open {name}'s profile
@@ -1550,8 +1582,6 @@ moment_card:
   charging_exclusive: Charging exclusive
   added_watch_later: Added to Watch later
   add_watch_later: Add to Watch later
-  added: Added
-  watch_later: Watch later
   live_post: Live post
   open_original_video: 'Open original video: {title}'
   author_images: '{name} post images'
@@ -1568,6 +1598,8 @@ moment_card:
   live_popularity: 'Live popularity: {value}'
   no_data: No data
   live_now: Live now
+  expand_text: Show full text
+  collapse_text: Collapse text
   like_unsupported: Likes are unavailable for this post
   unlike: Unlike
   like: Like
@@ -1616,3 +1648,4 @@ inject:
   of: of
   loading: Loading…
   load_more: Load more
+  expand_all_replies: Expand all replies

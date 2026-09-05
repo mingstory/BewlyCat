@@ -7,6 +7,7 @@ import { useI18n } from 'vue-i18n'
 import Button from '~/components/Button.vue'
 import Icon from '~/components/Icon.vue'
 import Radio from '~/components/Radio.vue'
+import TopBarModeSwitcher from '~/components/TopBar/components/TopBarModeSwitcher.vue'
 import type { BewlyAppProvider, SettingsNavigationTarget } from '~/composables/useAppProvider'
 import { DrawerType, UndoForwardState } from '~/composables/useAppProvider'
 import type { ConfirmDialogOptions, ConfirmDialogToggleField } from '~/composables/useConfirmDialog'
@@ -25,6 +26,7 @@ import { setOriginalBilibiliTopBarScrolled } from '~/utils/bilibiliTopBar'
 import { isHomePage, isInIframe, isNotificationPage, isSearchResultsPage, isVideoOrBangumiPage, openLinkToNewTab, queryDomUntilFound, scrollToTop } from '~/utils/main'
 import emitter from '~/utils/mitt'
 import { applyPendingSettingsMigrations, formatSettingsMigrationConfirmMessage, getPendingSettingsMigrationChoices, hasPendingSettingsMigrations } from '~/utils/settingsMigration'
+import { isComponentVisible } from '~/utils/topBarBadge'
 
 import { setupNecessarySettingsWatchers } from './necessarySettingsWatchers'
 
@@ -975,7 +977,17 @@ const undoForwardState = ref<UndoForwardState>(UndoForwardState.Hidden)
 const canRefreshCurrentPage = computed((): boolean => {
   return activatedPage.value !== AppPage.Home || homeActivatedPage.value === HomeSubPage.ForYou || canRefreshHomeSubPage.value
 })
+let refreshScrollTimer: ReturnType<typeof setTimeout> | undefined
+
+function cancelPendingPageRefresh() {
+  clearTimeout(refreshScrollTimer)
+  refreshScrollTimer = undefined
+}
+
+onBeforeUnmount(cancelPendingPageRefresh)
+
 const handleThrottledPageRefresh = useThrottleFn(() => {
+  cancelPendingPageRefresh()
   if (!canRefreshCurrentPage.value)
     return
 
@@ -989,15 +1001,21 @@ const handleThrottledPageRefresh = useThrottleFn(() => {
   }
   else {
     handleBackToTop()
+    const refresh = handlePageRefresh.value
+    const deadline = performance.now() + 3000
     const checkScrollComplete = () => {
-      if (viewport.scrollTop === 0) {
-        handlePageRefresh.value?.()
+      refreshScrollTimer = undefined
+      if (!viewport.isConnected || viewport !== scrollViewportRef.value || refresh !== handlePageRefresh.value)
+        return
+
+      if (viewport.scrollTop <= 1) {
+        refresh?.()
       }
-      else {
-        setTimeout(checkScrollComplete, 50)
+      else if (performance.now() < deadline) {
+        refreshScrollTimer = setTimeout(checkScrollComplete, 50)
       }
     }
-    setTimeout(checkScrollComplete, 100)
+    refreshScrollTimer = setTimeout(checkScrollComplete, 100)
   }
 }, 500)
 const handleThrottledReachBottom = useThrottleFn(() => handleReachBottom.value?.(), 200)
@@ -1163,6 +1181,18 @@ const showBewlyPage = computed((): boolean => {
 
   return isHomePage() && !settings.value.useOriginalBilibiliHomepage
 })
+
+// App outlives page components. Drop outgoing closures before the next page
+// registers its actions so evicted KeepAlive pages and their lists can be collected.
+watch([activatedPage, () => activatedPage.value === AppPage.Home ? homeActivatedPage.value : undefined, showBewlyPage], () => {
+  cancelPendingPageRefresh()
+  handlePageRefresh.value = undefined
+  handleReachBottom.value = undefined
+  handleUndoRefresh.value = undefined
+  handleForwardRefresh.value = undefined
+  undoForwardState.value = UndoForwardState.Hidden
+  canRefreshHomeSubPage.value = false
+}, { flush: 'sync' })
 
 // Keep the browser tab title in sync with the page selected from the Dock.
 // Search results manages its own keyword-aware title in SearchResults.vue.
@@ -1331,9 +1361,6 @@ onMounted(() => {
   }
 
   if (isHomePage()) {
-    // Force overwrite Bilibili Evolved body tag & html tag background color
-    document.body.style.setProperty('background-color', 'unset', 'important')
-
     focusScrollViewport()
 
     // Windows/Linux: 监听 Home 键
@@ -1621,6 +1648,7 @@ provide<BewlyAppProvider>('BEWLY_APP', {
 if (settings.value.cleanUrlArgument) {
   const BASE_PARAMS_TO_REMOVE = new Set([
     'spm_id_from',
+    'hcfrom',
     'from_source',
     'msource',
     'bsource',
@@ -1988,6 +2016,14 @@ if (settings.value.cleanUrlArgument) {
         pos="top-0 left-0" w-full
       />
     </div>
+
+    <TopBarModeSwitcher
+      v-if="isInIframe()
+        && settings.enableTopBar
+        && settings.useOriginalBilibiliTopBar
+        && isComponentVisible('topBarSwitcher')"
+      native
+    />
 
     <div
       v-if="!settings.useOriginalBilibiliHomepage"

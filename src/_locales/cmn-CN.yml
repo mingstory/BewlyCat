@@ -335,8 +335,8 @@ settings:
     inherit: 跟随动态卡片
   group_moments_wanted_users: 想看分组
   group_moments_wanted_users_desc: 管理想看的 UP 主；支持输入 UID 或昵称，名单仅保存在本地。
-  moments_enable_wanted_filter: 启用想看筛选
-  moments_enable_wanted_filter_desc: 在动态页横向栏显示“想看”入口，用于只查看名单内 UP 主的动态；关闭后隐藏入口并退出想看筛选。
+  moments_enable_wanted_filter: 显示“想看”按钮
+  moments_enable_wanted_filter_desc: 在动态页横向栏显示“想看”按钮，用于只查看名单内 UP 主的动态；关闭后直接移除按钮并退出想看筛选。
   moments_wanted_users: 想看的 UP 主
   group_moments_pinned_users: 固定 UP 主
   group_moments_pinned_users_desc: 管理固定在动态栏右侧的 UP 主；支持输入 UID 或昵称，名单仅保存在本地。
@@ -523,9 +523,9 @@ settings:
   only_cover_video_preview: 仅封面视频预览
   show_video_card_author_avatar: 显示用户头像
   show_video_card_author_name: 显示用户昵称
-  show_video_card_video_tag: 显示视频标签（搜索结果页）
-  show_video_card_video_tag_desc: 显示搜索页等场景提供的视频分类标签。
-  show_video_card_recommend_tag: 显示插件计算的推荐标签
+  show_video_card_video_tag: 显示接口与搜索标签
+  show_video_card_video_tag_desc: 显示接口提供的推荐理由、状态或分区标签，以及搜索页的视频内容标签。
+  show_video_card_recommend_tag: 显示插件计算标签
   show_video_card_recommend_tag_desc: 显示插件计算的标签，如"高赞"、"高互动"、"百万播放"等
   show_video_card_publish_time: 显示发布时间
   show_video_card_view_count: 显示播放量
@@ -616,9 +616,6 @@ settings:
   video_card_shadow_reset: 重置阴影设置
   video_card_layout: 视频卡片布局
   video_card_layout_desc: 在新版与旧版视频卡片显示样式之间切换。
-  release_offscreen_images: 回收离屏封面内存
-  release_offscreen_images_desc: 视频封面离开保留范围后卸载图片资源，降低长列表内存占用。
-  release_offscreen_images_warning: 警告：离屏回收内存功能可能会带来图片重新渲染上的性能卡顿，默认不回收。
   video_card_layout_option:
     modern: 新版
     old: 经典版
@@ -742,7 +739,7 @@ settings:
   authorize_app_more_info_access_key: 关于 access key
   scan_qrcode_desc: 使用 Bilibili 移动应用程序扫描此二维码，以授权获取 access key。
   show_recommendation_filter_risk_warning: 显示过滤风控警告
-  show_recommendation_filter_risk_warning_desc: 累计检查 100 条有效推荐后，如果设置中的过滤条件保留少于 50 条，则提示频繁请求的风控风险。
+  show_recommendation_filter_risk_warning_desc: 推荐列表已有足够有效视频填满视口后，加载更多时连续两批全部被过滤，或累计检查 100 条有效推荐后保留少于 50 条时，提示频繁请求的风控风险。
   disable_filters_for_followed_users: 关注的用户不受过滤条件限制
   disable_filters_for_followed_users_desc: |
     如果启用此选项，您关注的用户不受过滤条件限制。
@@ -1137,7 +1134,7 @@ video_card:
 home:
   app_authorization_required: App 模式的 access token 已缺失或过期，请重新授权后继续使用个性推荐
   reauthorize_app: 重新授权
-  recommendation_filter_risk_warning: 当前过滤条件在 100 条有效推荐中仅保留了 {count} 条，容易频繁请求并触发接口风控，建议适当放宽过滤条件。
+  recommendation_filter_risk_warning: 当前过滤条件在 {total} 条有效推荐中仅保留了 {count} 条，容易频繁请求并触发接口风控，建议适当放宽过滤条件。
   tell_us_why: 为什么这么做...
   not_interested_desc: >
     你可以使用 <kbd>↑</kbd> 和 <kbd>↓</kbd> 来选择原因，或者直接使用数字键选择原因，按 <kbd>Enter</kbd>
@@ -1244,11 +1241,15 @@ favorites:
   sidebar_manage_exit: 退出管理
   select_all: 全选
   unselect_all: 取消全选
-  rename_folder: 重命名
-  rename_folder_dialog_title: 重命名收藏夹
-  rename_folder_placeholder: 请输入收藏夹名称
-  rename_folder_empty: 收藏夹名称不能为空
-  default_folder_locked: 默认收藏夹不可重命名或删除
+  edit_folder: 编辑收藏夹
+  edit_folder_dialog_title: 编辑收藏夹
+  edit_folder_placeholder: 请输入收藏夹名称
+  edit_folder_empty: 收藏夹名称不能为空
+  folder_visibility: 收藏夹可见性
+  folder_visibility_desc: 公开收藏夹可被其他用户查看
+  folder_public: 公开
+  folder_private: 私密
+  default_folder_locked: 默认收藏夹不可编辑或删除
   delete_folders_confirm: |-
     要删除已选的 {count} 个收藏夹吗？
     夹内视频的收藏关系将一并移除，该操作无法撤销。
@@ -1375,11 +1376,26 @@ moments:
   go_charge: 去充电
   vote_ongoing: 进行中
   vote_ended: 已结束
+  vote_loading: 正在加载投票
+  vote_load_failed: 投票加载失败
+  vote_retry: 重试
+  vote_participants: '{count} 人参与'
+  vote_select_up_to: '最多选择 {count} 项'
+  vote_submit: 投票
+  vote_submitted: 已投票
+  vote_selected: 你选择了此项
+  vote_time_day: '{count}天'
+  vote_time_hour: '{count}小时'
+  vote_time_minute: '{count}分钟'
+  vote_ends_in: '{time}后截止'
+  login_to_vote: 登录后才能参与投票
+  vote_submit_failed: 投票失败，请稍后重试
+  vote_submit_succeeded: 投票成功
   forwarded_post: 转发了动态
   bilibili_user: B站用户
   original_author: 原作者
   live_post: 直播动态
-  video_post: 视频动态
+  video_post: 投稿了视频
   image_post: 图文动态
   text_post: 纯文字动态
   original_post: 原动态
@@ -1400,7 +1416,7 @@ moments:
   followers: 粉丝
   posts: 动态
   publish: 发布动态
-  live_now: 正在直播
+  live_now: 直播中
   group_label: 动态分组
   all_posts: 全部动态
   wanted_only: 只看想看的 UP 主
@@ -1438,7 +1454,23 @@ moments:
   fit_window: 适应窗口
   rotate_clockwise: 顺时针旋转
 moment_card:
-  video_post: 视频动态
+  comment_sex_male: 男
+  comment_sex_female: 女
+  expand_comment_replies: 共 {count} 条回复，点击展开
+  collapse_comment_replies: 收起回复
+  collapse_comments: 收起评论
+  comments_preview: 评论预览
+  comments_unavailable: 暂时无法获取此动态的评论区
+  comments_load_failed: 评论加载失败
+  comment_like_failed: 评论点赞失败，请稍后重试
+  comment_host: 楼主
+  expand_comment_thread: 展开此评论及回复
+  collapse_comment_thread: 收起此评论及回复
+  comment_image: 查看评论图片 {index}
+  comments_retry: 重试
+  load_comment_replies: 加载更多回复
+  comments_empty: 暂无评论
+  video_post: 投稿了视频
   cancel_reservation: 取消预约
   reserve: 预约
   open_space: 打开 {name} 的空间
@@ -1446,8 +1478,6 @@ moment_card:
   charging_exclusive: 充电专属
   added_watch_later: 已添加稍后再看
   add_watch_later: 添加至稍后再看
-  added: 已添加
-  watch_later: 稍后再看
   live_post: 直播动态
   open_original_video: '打开原视频：{title}'
   author_images: '{name} 的动态图片'
@@ -1464,6 +1494,8 @@ moment_card:
   live_popularity: '直播人气 {value}'
   no_data: 暂无数据
   live_now: 直播中
+  expand_text: 展开正文
+  collapse_text: 收起正文
   like_unsupported: 该动态暂不支持点赞
   unlike: 取消点赞
   like: 点赞
@@ -1512,3 +1544,4 @@ inject:
   of: 共
   loading: 加载中…
   load_more: 加载更多
+  expand_all_replies: 展开全部回复
