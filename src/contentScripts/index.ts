@@ -40,6 +40,7 @@ import { setupIframePhotoViewerDetector } from './features/iframePhotoViewerDete
 import { setupNativeHomeFeedHistory } from './features/nativeHomeFeedHistory'
 import { setupNotificationStateInvalidation } from './features/notificationStateInvalidation'
 import { setupOpusDetailDrawerLayout } from './features/opusDetailDrawerLayout'
+import { setupOriginalMomentsFilter } from './features/originalMomentsFilter'
 import { setupWatchLaterAutoRemove } from './features/watchLaterAutoRemove'
 import { initLocalLoudnessControl } from './localLoudnessControl'
 import type { PageLoadingGuard } from './pageLoading'
@@ -230,6 +231,7 @@ else if (shouldInitializeContentScript) {
     '.upinfo .face img',
   ].join(',')
   setupNotificationStateInvalidation()
+  setupOriginalMomentsFilter()
   setupNativeHomeFeedHistory()
   setupWatchLaterAutoRemove()
   // Fix `OverlayScrollbars` not working in Firefox
