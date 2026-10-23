@@ -10,6 +10,8 @@ import { originalComponentOptions, pluginComponentOptions, pluginFilterOptions }
 import { configurableShortcutsGroups } from '../src/components/Settings/definitions/shortcuts'
 import { topBarComponentDefinitions } from '../src/components/Settings/definitions/topbar'
 import { isSettingTitleKey, settingsSearchEntries } from '../src/components/Settings/searchCatalog'
+import { BEWLY_COMPONENT_PAGES_GROUP, BEWLY_PAGES_GROUP, BILIBILI_FEATURE_PAGES_GROUP } from '../src/components/Settings/settingsPageRegistry'
+import { MenuType } from '../src/components/Settings/types'
 import { SETTINGS_CATALOG_ALLOWLIST } from './settingsCatalogAllowlist'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -343,6 +345,57 @@ function validateDefinitions(locales: LocaleKeys[], targets: Set<string>) {
   }
 }
 
+function validateRoutes(locales: LocaleKeys[]) {
+  const pageGroups = [
+    { menu: MenuType.BewlyPages, group: BEWLY_PAGES_GROUP },
+    { menu: MenuType.BewlyComponents, group: BEWLY_COMPONENT_PAGES_GROUP },
+    { menu: MenuType.Bilibili, group: BILIBILI_FEATURE_PAGES_GROUP },
+  ]
+  const storageKeys = new Set<string>()
+
+  for (const { group } of pageGroups) {
+    if (storageKeys.has(group.storageKey))
+      errors.push(`页面存储 key "${group.storageKey}" 重复`)
+    storageKeys.add(group.storageKey)
+
+    const pageValues = new Set<string>()
+    const titleKeys = new Set<string>()
+    for (const page of group.pages) {
+      if (pageValues.has(page.value))
+        errors.push(`页面 value "${page.value}" 在 ${group.storageKey} 中重复`)
+      pageValues.add(page.value)
+      if (titleKeys.has(page.titleKey))
+        errors.push(`页面标题 key "${page.titleKey}" 在 ${group.storageKey} 中重复`)
+      titleKeys.add(page.titleKey)
+      if (!localeHasStringLeaf(locales, page.titleKey))
+        errors.push(`页面标题 key "${page.titleKey}" 在 locale 中缺失或不是字符串叶子`)
+      if (!localeHasStringLeaf(locales, page.descriptionKey))
+        errors.push(`页面描述 key "${page.descriptionKey}" 在 locale 中缺失或不是字符串叶子`)
+    }
+  }
+
+  const groupByMenu = new Map(pageGroups.map(({ menu, group }) => [menu, group]))
+  for (const entry of settingsSearchEntries) {
+    const group = groupByMenu.get(entry.menu)
+    if (!group)
+      continue
+    if (!entry.secondaryTitleKey) {
+      errors.push(`条目 "${entry.titleKey ?? entry.title ?? ''}" 缺少 secondaryTitleKey`)
+      continue
+    }
+    const page = group.pages.find(page => page.titleKey === entry.secondaryTitleKey)
+    if (!page) {
+      errors.push(`条目 "${entry.titleKey ?? entry.title ?? ''}" 指向未知页面标题 "${entry.secondaryTitleKey}"`)
+      continue
+    }
+    const storageValue = entry.storageValues?.find(value => value.key === group.storageKey)
+    if (!storageValue)
+      errors.push(`条目 "${entry.titleKey ?? entry.title ?? ''}" 缺少页面存储值 ${group.storageKey}`)
+    else if (storageValue.value !== page.value)
+      errors.push(`条目 "${entry.titleKey ?? entry.title ?? ''}" 的页面存储值 ${storageValue.value} 与 ${page.value} 不一致`)
+  }
+}
+
 function main() {
   const localeFiles = readdirSync(localesDirectory)
     .filter(file => file.endsWith('.yml'))
@@ -371,6 +424,7 @@ function main() {
   const targets = validateEntries(locales)
   validateStaticKeys(locales, targets)
   validateDefinitions(locales, targets)
+  validateRoutes(locales)
 
   for (const warning of warnings)
     console.warn(`[warn] ${warning}`)

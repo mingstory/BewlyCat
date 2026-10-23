@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import SettingsCategoryLayout from '../components/SettingsCategoryLayout.vue'
+import type { Component } from 'vue'
 
-const storageKey = 'bewly-settings-bewly-pages-page'
+import SettingsCategoryLayout from '../components/SettingsCategoryLayout.vue'
+import type { BewlyPageValue } from '../settingsPageRegistry'
+import { BEWLY_PAGES_GROUP } from '../settingsPageRegistry'
+
+const storageKey = BEWLY_PAGES_GROUP.storageKey
 const legacyStorageKey = 'bewly-settings-navigation-page'
-const pageValues = ['home', 'moments', 'favorites', 'search']
+const pageValues: string[] = BEWLY_PAGES_GROUP.pages.map(page => page.value)
 const legacyPage = sessionStorage.getItem(legacyStorageKey)
 
 if (!sessionStorage.getItem(storageKey) && legacyPage && pageValues.includes(legacyPage))
@@ -11,40 +15,30 @@ if (!sessionStorage.getItem(storageKey) && legacyPage && pageValues.includes(leg
 if (!pageValues.includes(sessionStorage.getItem(storageKey) ?? ''))
   sessionStorage.setItem(storageKey, pageValues[0])
 
-const pages = [
-  {
-    value: 'home',
-    titleKey: 'settings.plugin.home',
-    descriptionKey: 'settings.category_browsing_home_desc',
+const pageUi: Record<BewlyPageValue, { icon: string, iconActivated: string, component: Component }> = {
+  home: {
     icon: 'i-mingcute:home-5-line',
     iconActivated: 'i-mingcute:home-5-fill',
     component: defineAsyncComponent(() => import('../PluginComponentsAndPages/Home/Home.vue')),
   },
-  {
-    value: 'moments',
-    titleKey: 'settings.plugin.moments',
-    descriptionKey: 'settings.category_navigation_moments_desc',
+  moments: {
     icon: 'i-mingcute:moment-line',
     iconActivated: 'i-mingcute:moment-fill',
     component: defineAsyncComponent(() => import('../PluginComponentsAndPages/Moments/Moments.vue')),
   },
-  {
-    value: 'favorites',
-    titleKey: 'settings.plugin.favorites',
-    descriptionKey: 'settings.category_browsing_favorites_desc',
+  favorites: {
     icon: 'i-mingcute:star-line',
     iconActivated: 'i-mingcute:star-fill',
     component: defineAsyncComponent(() => import('../PluginComponentsAndPages/Favorites/Favorites.vue')),
   },
-  {
-    value: 'search',
-    titleKey: 'settings.plugin.search',
-    descriptionKey: 'settings.category_navigation_search_desc',
+  search: {
     icon: 'i-mingcute:search-2-line',
     iconActivated: 'i-mingcute:search-2-fill',
     component: defineAsyncComponent(() => import('../PluginComponentsAndPages/SearchPage/SearchPage.vue')),
   },
-]
+}
+
+const pages = BEWLY_PAGES_GROUP.pages.map(page => ({ ...page, ...pageUi[page.value] }))
 </script>
 
 <template>

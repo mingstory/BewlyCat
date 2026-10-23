@@ -145,6 +145,7 @@ const momentsTabsPositionOptions = computed<{ label: string, value: TabsPosition
       <SettingsItem
         :title="$t('settings.moments_enable_video_preview')"
         :desc="$t('settings.moments_enable_video_preview_desc')"
+        data-settings-key="settings.moments_enable_video_preview"
         right-width="auto"
       >
         <Radio v-model="settings.momentsEnableVideoPreview" />

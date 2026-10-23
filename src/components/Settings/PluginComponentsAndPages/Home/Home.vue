@@ -382,7 +382,11 @@ function handleToggleHomeTab(tab: Settings['homePageTabVisibilityList'][number],
     </SettingsItemGroup>
 
     <SettingsItemGroup :title="$t('settings.group_search_page_mode')">
-      <SettingsItem :title="$t('settings.use_search_page_mode')" right-width="auto">
+      <SettingsItem
+        :title="$t('settings.use_search_page_mode')"
+        data-settings-key="settings.use_search_page_mode"
+        right-width="auto"
+      >
         <Radio v-model="settings.useSearchPageModeOnHomePage" />
       </SettingsItem>
       <template v-if="settings.useSearchPageModeOnHomePage">
