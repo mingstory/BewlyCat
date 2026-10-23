@@ -77,6 +77,7 @@ interface ConfirmDialogRequest {
   message: string
   title?: string
   confirmLabel?: string
+  primaryAction?: 'confirm' | 'cancel'
   toggleFields?: ConfirmDialogToggleField[]
   resolve: (confirmed: boolean) => void
   settled: boolean
@@ -113,6 +114,7 @@ function showConfirmDialog(message: string, options: ConfirmDialogOptions = {}):
       message,
       title: options.title,
       confirmLabel: options.confirmLabel,
+      primaryAction: options.primaryAction,
       toggleFields: options.toggleFields,
       resolve,
       settled: false,
@@ -2176,10 +2178,16 @@ if (settings.value.cleanUrlArgument) {
           </div>
         </div>
         <footer class="bew-confirm-dialog__footer">
-          <Button type="tertiary" @click="finishConfirmDialog(true)">
+          <Button
+            :type="activeConfirmDialog.primaryAction === 'confirm' ? 'primary' : 'tertiary'"
+            @click="finishConfirmDialog(true)"
+          >
             {{ activeConfirmDialog.confirmLabel || $t('common.operation.confirm') }}
           </Button>
-          <Button type="primary" @click="finishConfirmDialog(false)">
+          <Button
+            :type="activeConfirmDialog.primaryAction === 'confirm' ? 'tertiary' : 'primary'"
+            @click="finishConfirmDialog(false)"
+          >
             {{ $t('common.operation.cancel') }}
           </Button>
         </footer>

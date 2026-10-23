@@ -17,7 +17,7 @@ const { t, locale } = useI18n()
 const { confirm: showConfirmDialog } = useConfirmDialog()
 const {
   enabledOptions: enabledPresetOptions,
-  hasBackup: hasPresetBackup,
+  canUndo,
   applyLowPerformancePreset,
   undoLowPerformancePreset,
 } = useLowPerformancePreset()
@@ -37,19 +37,23 @@ async function handleApplyLowPerformancePreset() {
     id: option.key,
     label: t(option.titleKey),
     value: true,
-    enabledLabel: t('settings.low_performance_preset_close'),
-    disabledLabel: t('settings.low_performance_preset_keep'),
+    enabledLabel: t('settings.low_performance_preset_include'),
+    disabledLabel: t('settings.low_performance_preset_skip'),
   }))
 
   const confirmed = await showConfirmDialog(t('settings.low_performance_preset_confirm_desc'), {
     title: t('settings.low_performance_preset'),
     confirmLabel: t('settings.low_performance_preset_apply'),
+    primaryAction: 'confirm',
     toggleFields,
   })
   if (!confirmed)
     return
 
-  applyLowPerformancePreset(options.filter((_, index) => toggleFields[index]?.value))
+  const selectedIds = new Set(
+    toggleFields.filter(field => field.value).map(field => field.id),
+  )
+  applyLowPerformancePreset(options.filter(option => selectedIds.has(option.key)))
 }
 
 const langOptions = computed(() => {
@@ -110,7 +114,7 @@ watch(() => settings.value.language, (newValue) => {
         >
           {{ $t('settings.low_performance_preset_apply') }}
         </Button>
-        <template v-if="hasPresetBackup" #bottom>
+        <template v-if="canUndo" #bottom>
           <div flex="~ items-center justify-between gap-4">
             <span text="sm $bew-text-2">{{ $t('settings.low_performance_preset_undo_desc') }}</span>
             <Button type="secondary" size="small" @click="undoLowPerformancePreset">

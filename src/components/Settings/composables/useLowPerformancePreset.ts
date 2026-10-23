@@ -1,8 +1,9 @@
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
+import browser from 'webextension-polyfill'
 
 import { useStorageLocal } from '~/composables/useStorageLocal'
 import type { Settings } from '~/logic'
-import { settings } from '~/logic'
+import { settings, settingsReady } from '~/logic'
 
 type BooleanSettingKey = {
   [K in keyof Settings]: Settings[K] extends boolean ? K : never
@@ -24,9 +25,20 @@ const lowPerformancePresetOptions = [
 
 type LowPerformancePresetBackup = Partial<Record<BooleanSettingKey, boolean>>
 
+const LOW_PERFORMANCE_PRESET_BACKUP_KEY = 'lowPerformancePresetBackup'
+
+export async function clearLowPerformancePresetBackup() {
+  try {
+    await browser.storage.local.remove(LOW_PERFORMANCE_PRESET_BACKUP_KEY)
+  }
+  catch (error) {
+    console.error(error)
+  }
+}
+
 export function useLowPerformancePreset() {
   const backup = useStorageLocal<LowPerformancePresetBackup>(
-    'lowPerformancePresetBackup',
+    LOW_PERFORMANCE_PRESET_BACKUP_KEY,
     {},
     { mergeDefaults: true, writeDefaults: false },
   )
@@ -49,19 +61,34 @@ export function useLowPerformancePreset() {
     lowPerformancePresetOptions.filter(option => settings.value[option.key]),
   )
 
-  const hasBackup = computed(() => Object.keys(backupFields.value).length > 0)
+  const restorableOptions = computed(() =>
+    lowPerformancePresetOptions.filter(option =>
+      backupFields.value[option.key] !== undefined && settings.value[option.key] === false,
+    ),
+  )
+
+  const canUndo = computed(() => restorableOptions.value.length > 0)
+
+  const settingsAreReady = ref(false)
+  void settingsReady.then(() => {
+    settingsAreReady.value = true
+  })
+
+  // 用户手动改回相关设置后，上一次应用的备份已经没有可恢复项，及时失效。
+  watch([settingsAreReady, restorableOptions], ([ready, options]) => {
+    if (ready && !options.length && Object.keys(backupFields.value).length > 0)
+      backup.value = {}
+  })
 
   function applyLowPerformancePreset(options: readonly LowPerformancePresetOption[]) {
-    const previousFields = { ...backupFields.value }
+    const previousFields: LowPerformancePresetBackup = {}
     let applied = false
 
     for (const option of options) {
       if (!settings.value[option.key])
         continue
 
-      if (!(option.key in previousFields))
-        previousFields[option.key] = settings.value[option.key]
-
+      previousFields[option.key] = settings.value[option.key]
       settings.value[option.key] = false
       applied = true
     }
@@ -71,14 +98,14 @@ export function useLowPerformancePreset() {
   }
 
   function undoLowPerformancePreset() {
-    for (const option of lowPerformancePresetOptions) {
+    for (const option of restorableOptions.value) {
       const previousValue = backupFields.value[option.key]
-      if (previousValue !== undefined && settings.value[option.key] === false)
+      if (previousValue !== undefined)
         settings.value[option.key] = previousValue
     }
 
     backup.value = {}
   }
 
-  return { enabledOptions, hasBackup, applyLowPerformancePreset, undoLowPerformancePreset }
+  return { enabledOptions, canUndo, applyLowPerformancePreset, undoLowPerformancePreset }
 }

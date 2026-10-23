@@ -2,6 +2,7 @@
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'vue-toastification'
 
+import { clearLowPerformancePresetBackup } from '~/components/Settings/composables/useLowPerformancePreset'
 import { useConfirmDialog } from '~/composables/useConfirmDialog'
 import { importSettingsStorage } from '~/composables/useSettingsStorage'
 import { HomeSubPage } from '~/contentScripts/views/Home/types'
@@ -252,6 +253,7 @@ function handleImportFile(event: Event) {
       }
 
       await importSettingsStorage(recognizedSettings)
+      await clearLowPerformancePresetBackup()
 
       toast.success(t('settings.maintenance.import_success', {
         imported: importedCount,
@@ -286,6 +288,8 @@ async function handleResetSettings() {
   const resetSettings = structuredClone(originalSettings)
   resetSettings.language = settings.value.language
   settings.value = resetSettings
+  // 防止重置后通过“还原”重新打开已被预设关闭的效果。
+  await clearLowPerformancePresetBackup()
 }
 </script>
 

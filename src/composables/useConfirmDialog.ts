@@ -12,6 +12,7 @@ export interface ConfirmDialogToggleField {
 export interface ConfirmDialogOptions {
   title?: string
   confirmLabel?: string
+  primaryAction?: 'confirm' | 'cancel'
   toggleFields?: ConfirmDialogToggleField[]
 }
 

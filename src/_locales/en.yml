@@ -178,7 +178,7 @@ settings:
     placeholder: Search settings
     no_results: No matching settings
     located: Setting located
-  category_general_desc: Configure language, interaction, link opening, and drawer behavior.
+  category_general_desc: Configure language, performance presets, interaction, link opening, and drawer behavior.
   category_appearance_desc: Configure frosted glass, theme colors, wallpaper, fonts, custom styles, and page style adaptation.
   category_shortcuts_desc: Enable, customize, or restore BewlyCat and player shortcuts.
   breadcrumb: Settings location
@@ -260,11 +260,11 @@ settings:
   low_performance_preset: Low-performance preset
   low_performance_preset_desc: Turn off ambilight, frosted glass, the liquid segment indicator, immersive preloading, video card hover previews, and sidebar cover blur in one step. Choose which effects to disable before applying.
   low_performance_preset_apply: Apply low-performance preset
-  low_performance_preset_confirm_desc: The following settings will be turned off. Clear a switch to keep that effect; you can undo this change afterwards.
-  low_performance_preset_close: Turn off
-  low_performance_preset_keep: Keep on
-  low_performance_preset_undo_desc: Restore the settings from before the preset was applied. Only entries that still match the preset are restored.
-  low_performance_preset_none_enabled: All related effects are already off; the low-performance state is active.
+  low_performance_preset_confirm_desc: The following enabled settings will be turned off. Switch an item to “Skip” to keep that effect; you can undo this change afterwards.
+  low_performance_preset_include: Include
+  low_performance_preset_skip: Skip
+  low_performance_preset_undo_desc: Restore the settings from before the last preset application. Only entries that still match the preset are restored.
+  low_performance_preset_none_enabled: All settings covered by this preset are already off.
   group_ad_blocking: Ad Blocking
   group_comments: Comments
   group_languages_and_fonts: Languages & Fonts

@@ -178,7 +178,7 @@ settings:
     placeholder: 搜尋設定
     no_results: 搵唔到相關設定
     located: 已定位到呢個設定
-  category_general_desc: 設定語言、互動版面、連結打開方式同抽屜行為。
+  category_general_desc: 設定語言、效能預設、互動版面、連結打開方式同抽屜行為。
   category_appearance_desc: 設定毛玻璃、主題顏色、桌布、字型、自訂樣式同其他頁面嘅適配。
   category_shortcuts_desc: 啟用、修改或者還原 BewlyCat 同播放器快捷鍵。
   breadcrumb: 設定位置
@@ -260,11 +260,11 @@ settings:
   low_performance_preset: 低效能預設
   low_performance_preset_desc: 一鍵閂咗環境光、毛玻璃、液態指示器、沉浸式預先載入、影片卡片懸停預覽同側邊欄封面模糊，啱低效能裝置用。套用前可以逐項揀。
   low_performance_preset_apply: 套用低效能預設
-  low_performance_preset_confirm_desc: 以下設定會閂咗。取消勾選可以保留返嗰個效果；套用之後仲可以復原今次變更。
-  low_performance_preset_close: 閂咗佢
-  low_performance_preset_keep: 保持開住
-  low_performance_preset_undo_desc: 還原套用預設之前嘅設定；只會還原而家仍然同預設值一致嘅項目。
-  low_performance_preset_none_enabled: 相關效果已經全部閂咗，而家已經係低效能狀態。
+  low_performance_preset_confirm_desc: 以下已開啟嘅設定會閂咗。將開關切換為「跳過」可以保留返嗰個效果；套用之後仲可以復原今次變更。
+  low_performance_preset_include: 納入預設
+  low_performance_preset_skip: 跳過
+  low_performance_preset_undo_desc: 還原上次套用預設之前嘅設定；只會還原而家仍然同預設值一致嘅項目。
+  low_performance_preset_none_enabled: 預設涉及嘅設定已經全部閂咗。
   group_ad_blocking: 廣告攔截
   group_comments: 評論
   group_languages_and_fonts: 語言同字型
