@@ -435,7 +435,12 @@ function handleToggleHomeTab(tab: Settings['homePageTabVisibilityList'][number],
       <SettingsItem :title="$t('settings.filter_out_vertical_videos')" right-width="auto">
         <Radio v-model="settings.filterOutVerticalVideos" />
       </SettingsItem>
-      <SettingsItem :title="$t('settings.filter_by_view_count')" :desc="$t('settings.filter_by_view_count_desc')" right-width="auto">
+      <SettingsItem
+        :title="$t('settings.filter_by_view_count')"
+        :desc="$t('settings.filter_by_view_count_desc')"
+        data-settings-key="settings.filter_by_view_count"
+        right-width="auto"
+      >
         <div class="filter-control" :class="{ 'filter-control--enabled': settings.enableFilterByViewCount }" flex="~ justify-end">
           <Input
             v-if="settings.enableFilterByViewCount"
@@ -449,7 +454,12 @@ function handleToggleHomeTab(tab: Settings['homePageTabVisibilityList'][number],
           <Radio v-model="settings.enableFilterByViewCount" />
         </div>
       </SettingsItem>
-      <SettingsItem :title="$t('settings.filter_by_like_count')" :desc="$t('settings.filter_by_like_count_desc')" right-width="auto">
+      <SettingsItem
+        :title="$t('settings.filter_by_like_count')"
+        :desc="$t('settings.filter_by_like_count_desc')"
+        data-settings-key="settings.filter_by_like_count"
+        right-width="auto"
+      >
         <div class="filter-control" :class="{ 'filter-control--enabled': settings.enableFilterByLikeCount }" flex="~ justify-end">
           <Input
             v-if="settings.enableFilterByLikeCount"
@@ -463,7 +473,12 @@ function handleToggleHomeTab(tab: Settings['homePageTabVisibilityList'][number],
           <Radio v-model="settings.enableFilterByLikeCount" />
         </div>
       </SettingsItem>
-      <SettingsItem :title="$t('settings.filter_by_duration')" :desc="$t('settings.filter_by_duration_desc')" right-width="auto">
+      <SettingsItem
+        :title="$t('settings.filter_by_duration')"
+        :desc="$t('settings.filter_by_duration_desc')"
+        data-settings-key="settings.filter_by_duration"
+        right-width="auto"
+      >
         <div class="filter-control" :class="{ 'filter-control--enabled': settings.enableFilterByDuration }" flex="~ justify-end">
           <Input
             v-if="settings.enableFilterByDuration"
@@ -477,7 +492,12 @@ function handleToggleHomeTab(tab: Settings['homePageTabVisibilityList'][number],
           <Radio v-model="settings.enableFilterByDuration" />
         </div>
       </SettingsItem>
-      <SettingsItem :title="$t('settings.filter_by_publish_time')" :desc="$t('settings.filter_by_publish_time_desc')" right-width="auto">
+      <SettingsItem
+        :title="$t('settings.filter_by_publish_time')"
+        :desc="$t('settings.filter_by_publish_time_desc')"
+        data-settings-key="settings.filter_by_publish_time"
+        right-width="auto"
+      >
         <div class="filter-control" :class="{ 'filter-control--enabled': settings.enableFilterByPublishTime }" flex="~ justify-end">
           <Input
             v-if="settings.enableFilterByPublishTime"

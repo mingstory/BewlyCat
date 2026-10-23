@@ -121,6 +121,7 @@ function updateDockItemPageMode(dockItem: DockItem, useOriginalBiliPage: boolean
       <SettingsItem
         :title="$t('settings.dock_content_adjustment')"
         :desc="$t('settings.dock_content_adjustment_desc')"
+        data-settings-key="settings.dock_content_adjustment"
       >
         <template #title>
           <div flex="~ gap-4 items-center">

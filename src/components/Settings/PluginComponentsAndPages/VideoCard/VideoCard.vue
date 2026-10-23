@@ -99,6 +99,7 @@ function getCoverRatioProgress(value: number) {
       <SettingsItem
         :title="$t('settings.video_card_layout')"
         :desc="$t('settings.video_card_layout_desc')"
+        data-settings-key="settings.video_card_layout"
         right-width="auto"
       >
         <Select v-model="settings.videoCardLayout" :options="videoCardLayoutOptions" w="160px" />
@@ -202,7 +203,12 @@ function getCoverRatioProgress(value: number) {
         </div>
       </SettingsItem>
 
-      <SettingsItem :title="$t('settings.grid_breakpoints')" :desc="$t('settings.grid_breakpoints_desc')" right-width="auto">
+      <SettingsItem
+        :title="$t('settings.grid_breakpoints')"
+        :desc="$t('settings.grid_breakpoints_desc')"
+        data-settings-key="settings.grid_breakpoints"
+        right-width="auto"
+      >
         <template #bottom>
           <div class="grid-breakpoints">
             <div
