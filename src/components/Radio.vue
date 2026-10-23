@@ -2,6 +2,7 @@
 defineProps<{
   modelValue: boolean
   label?: string
+  ariaLabel?: string
   disabled?: boolean
 }>()
 
@@ -14,7 +15,13 @@ const model = defineModel()
     gap-3
   >
     <span>{{ label }}</span>
-    <input v-model="model" type="checkbox" class="radio-input" :disabled="disabled">
+    <input
+      v-model="model"
+      type="checkbox"
+      class="radio-input"
+      :aria-label="ariaLabel"
+      :disabled="disabled"
+    >
     <span class="radio-switch" aria-hidden="true" />
   </label>
 </template>

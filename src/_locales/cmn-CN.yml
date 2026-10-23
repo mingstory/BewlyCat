@@ -258,11 +258,18 @@ settings:
   group_language: 语言
   group_performance_preset: 性能预设
   low_performance_preset: 低性能预设
-  low_performance_preset_desc: 一键关闭环境光、毛玻璃、液态指示器、沉浸式预加载、视频卡片悬停预览与侧栏封面模糊，适合低性能设备。应用前可逐项选择。
+  low_performance_preset_desc: 一键关闭视频环境光、毛玻璃效果、液态分段指示器、沉浸式预加载、视频卡片悬停预览与侧栏封面模糊，适合低性能设备。应用前可逐项选择。
   low_performance_preset_apply: 应用低性能预设
   low_performance_preset_confirm_desc: 将关闭以下已开启的设置。将开关切换为“跳过”可保留对应效果；应用后仍可撤销本次更改。
   low_performance_preset_include: 纳入预设
   low_performance_preset_skip: 跳过
+  low_performance_preset_effect_frosted_glass: 毛玻璃效果
+  low_performance_preset_effect_liquid_indicator: 液态分段指示器
+  low_performance_preset_effect_immersive_preload: 沉浸式预加载
+  low_performance_preset_effect_video_preview: 视频卡片悬停预览
+  low_performance_preset_effect_sidebar_cover_blur: 侧栏封面模糊
+  low_performance_preset_applied: 已应用低性能预设
+  low_performance_preset_undone: 已恢复上次应用前的设置
   low_performance_preset_undo_desc: 恢复上次应用预设前的设置；仅恢复当前仍与预设值一致的项目。
   low_performance_preset_none_enabled: 预设涉及的设置均已关闭。
   group_ad_blocking: 广告拦截

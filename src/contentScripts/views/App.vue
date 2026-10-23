@@ -79,6 +79,7 @@ interface ConfirmDialogRequest {
   confirmLabel?: string
   primaryAction?: 'confirm' | 'cancel'
   toggleFields?: ConfirmDialogToggleField[]
+  previousFocus?: HTMLElement
   resolve: (confirmed: boolean) => void
   settled: boolean
 }
@@ -107,6 +108,13 @@ const confirmDialogPanelStyle = computed(() => {
   }
 })
 
+function getDeepActiveElement(): HTMLElement | undefined {
+  let active = document.activeElement
+  while (active?.shadowRoot?.activeElement)
+    active = active.shadowRoot.activeElement
+  return active instanceof HTMLElement ? active : undefined
+}
+
 function showConfirmDialog(message: string, options: ConfirmDialogOptions = {}): Promise<boolean> {
   return new Promise((resolve) => {
     const request: ConfirmDialogRequest = {
@@ -116,6 +124,7 @@ function showConfirmDialog(message: string, options: ConfirmDialogOptions = {}):
       confirmLabel: options.confirmLabel,
       primaryAction: options.primaryAction,
       toggleFields: options.toggleFields,
+      previousFocus: getDeepActiveElement(),
       resolve,
       settled: false,
     }
@@ -140,9 +149,15 @@ function finishConfirmDialog(confirmed: boolean) {
 
   nextTick(() => {
     request.resolve(confirmed)
+    request.previousFocus?.focus()
     confirmDialogBusy = false
     showNextConfirmDialog()
   })
+}
+
+function getConfirmFieldAriaLabel(field: ConfirmDialogToggleField) {
+  const state = field.value ? field.enabledLabel : field.disabledLabel
+  return state ? `${field.label}: ${state}` : field.label
 }
 
 onKeyStroke('Escape', (e: KeyboardEvent) => {
@@ -2170,10 +2185,13 @@ if (settings.value.cleanUrlArgument) {
               class="bew-confirm-dialog__field"
             >
               <span class="bew-confirm-dialog__field-label">{{ field.label }}</span>
-              <Radio
-                v-model="field.value"
-                :label="field.value ? field.enabledLabel : field.disabledLabel"
-              />
+              <div class="bew-confirm-dialog__field-control">
+                <Radio
+                  v-model="field.value"
+                  :label="field.value ? field.enabledLabel : field.disabledLabel"
+                  :aria-label="getConfirmFieldAriaLabel(field)"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -2460,10 +2478,18 @@ if (settings.value.cleanUrlArgument) {
 }
 
 .bew-confirm-dialog__field-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: var(--bew-text-1);
   font-size: var(--bew-font-size-control);
   font-weight: var(--bew-font-weight-semibold);
   line-height: var(--bew-line-height-control);
+}
+
+.bew-confirm-dialog__field-control {
+  display: flex;
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .bew-confirm-dialog__footer {

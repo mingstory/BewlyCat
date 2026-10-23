@@ -11,16 +11,16 @@ type BooleanSettingKey = {
 
 interface LowPerformancePresetOption {
   key: BooleanSettingKey
-  titleKey: string
+  labelKey: string
 }
 
 const lowPerformancePresetOptions = [
-  { key: 'ambilightEnabled', titleKey: 'settings.ambilight.title' },
-  { key: 'enableFrostedGlass', titleKey: 'settings.enable_frosted_glass' },
-  { key: 'enableLiquidSegmentIndicator', titleKey: 'settings.enable_liquid_segment_indicator' },
-  { key: 'immersivePreloadNext', titleKey: 'settings.immersive_preload_next' },
-  { key: 'enableVideoPreview', titleKey: 'settings.enable_video_preview' },
-  { key: 'enableSidebarCoverBlur', titleKey: 'settings.sidebar_cover_blur' },
+  { key: 'ambilightEnabled', labelKey: 'settings.ambilight.title' },
+  { key: 'enableFrostedGlass', labelKey: 'settings.low_performance_preset_effect_frosted_glass' },
+  { key: 'enableLiquidSegmentIndicator', labelKey: 'settings.low_performance_preset_effect_liquid_indicator' },
+  { key: 'immersivePreloadNext', labelKey: 'settings.low_performance_preset_effect_immersive_preload' },
+  { key: 'enableVideoPreview', labelKey: 'settings.low_performance_preset_effect_video_preview' },
+  { key: 'enableSidebarCoverBlur', labelKey: 'settings.low_performance_preset_effect_sidebar_cover_blur' },
 ] as const satisfies readonly LowPerformancePresetOption[]
 
 type LowPerformancePresetBackup = Partial<Record<BooleanSettingKey, boolean>>
@@ -37,7 +37,7 @@ export async function clearLowPerformancePresetBackup() {
 }
 
 export function useLowPerformancePreset() {
-  const backup = useStorageLocal<LowPerformancePresetBackup>(
+  const backup = useStorageLocal<LowPerformancePresetBackup | null>(
     LOW_PERFORMANCE_PRESET_BACKUP_KEY,
     {},
     { mergeDefaults: true, writeDefaults: false },
@@ -77,10 +77,10 @@ export function useLowPerformancePreset() {
   // 用户手动改回相关设置后，上一次应用的备份已经没有可恢复项，及时失效。
   watch([settingsAreReady, restorableOptions], ([ready, options]) => {
     if (ready && !options.length && Object.keys(backupFields.value).length > 0)
-      backup.value = {}
+      backup.value = null
   })
 
-  function applyLowPerformancePreset(options: readonly LowPerformancePresetOption[]) {
+  function applyLowPerformancePreset(options: readonly LowPerformancePresetOption[]): boolean {
     const previousFields: LowPerformancePresetBackup = {}
     let applied = false
 
@@ -95,16 +95,23 @@ export function useLowPerformancePreset() {
 
     if (applied)
       backup.value = previousFields
+
+    return applied
   }
 
-  function undoLowPerformancePreset() {
+  function undoLowPerformancePreset(): number {
+    let restoredCount = 0
+
     for (const option of restorableOptions.value) {
       const previousValue = backupFields.value[option.key]
-      if (previousValue !== undefined)
+      if (previousValue !== undefined) {
         settings.value[option.key] = previousValue
+        restoredCount++
+      }
     }
 
-    backup.value = {}
+    backup.value = null
+    return restoredCount
   }
 
   return { enabledOptions, canUndo, applyLowPerformancePreset, undoLowPerformancePreset }

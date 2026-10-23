@@ -258,11 +258,18 @@ settings:
   group_language: Language
   group_performance_preset: Performance Preset
   low_performance_preset: Low-performance preset
-  low_performance_preset_desc: Turn off ambilight, frosted glass, the liquid segment indicator, immersive preloading, video card hover previews, and sidebar cover blur in one step. Choose which effects to disable before applying.
+  low_performance_preset_desc: Turn off video ambient light, frosted glass, the liquid segment indicator, immersive preloading, video card hover previews, and sidebar cover blur in one step. Choose which effects to disable before applying.
   low_performance_preset_apply: Apply low-performance preset
   low_performance_preset_confirm_desc: The following enabled settings will be turned off. Switch an item to “Skip” to keep that effect; you can undo this change afterwards.
   low_performance_preset_include: Include
   low_performance_preset_skip: Skip
+  low_performance_preset_effect_frosted_glass: Frosted glass effect
+  low_performance_preset_effect_liquid_indicator: Liquid segment indicator
+  low_performance_preset_effect_immersive_preload: Immersive preloading
+  low_performance_preset_effect_video_preview: Video card hover preview
+  low_performance_preset_effect_sidebar_cover_blur: Sidebar cover blur
+  low_performance_preset_applied: Low-performance preset applied
+  low_performance_preset_undone: Restored the settings from before the last application
   low_performance_preset_undo_desc: Restore the settings from before the last preset application. Only entries that still match the preset are restored.
   low_performance_preset_none_enabled: All settings covered by this preset are already off.
   group_ad_blocking: Ad Blocking

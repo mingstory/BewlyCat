@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { useI18n } from 'vue-i18n'
+import { useToast } from 'vue-toastification'
 
 import Button from '~/components/Button.vue'
 import Radio from '~/components/Radio.vue'
@@ -14,6 +15,7 @@ import SettingsSectionHeading from '../../components/SettingsSectionHeading.vue'
 import LinkOpening from '../../Navigation/LinkOpening.vue'
 
 const { t, locale } = useI18n()
+const toast = useToast()
 const { confirm: showConfirmDialog } = useConfirmDialog()
 const {
   enabledOptions: enabledPresetOptions,
@@ -27,6 +29,8 @@ const presetDescriptionKey = computed(() =>
     ? 'settings.low_performance_preset_desc'
     : 'settings.low_performance_preset_none_enabled',
 )
+const presetApplyControlRef = ref<HTMLElement>()
+const presetUndoControlRef = ref<HTMLElement>()
 
 async function handleApplyLowPerformancePreset() {
   const options = enabledPresetOptions.value
@@ -35,7 +39,7 @@ async function handleApplyLowPerformancePreset() {
 
   const toggleFields = options.map(option => ({
     id: option.key,
-    label: t(option.titleKey),
+    label: t(option.labelKey),
     value: true,
     enabledLabel: t('settings.low_performance_preset_include'),
     disabledLabel: t('settings.low_performance_preset_skip'),
@@ -53,7 +57,18 @@ async function handleApplyLowPerformancePreset() {
   const selectedIds = new Set(
     toggleFields.filter(field => field.value).map(field => field.id),
   )
-  applyLowPerformancePreset(options.filter(option => selectedIds.has(option.key)))
+  const applied = applyLowPerformancePreset(options.filter(option => selectedIds.has(option.key)))
+  if (applied) {
+    toast.success(t('settings.low_performance_preset_applied'))
+    nextTick(() => presetUndoControlRef.value?.querySelector('button')?.focus())
+  }
+}
+
+function handleUndoLowPerformancePreset() {
+  const restoredCount = undoLowPerformancePreset()
+  if (restoredCount > 0)
+    toast.success(t('settings.low_performance_preset_undone'))
+  nextTick(() => presetApplyControlRef.value?.querySelector('button')?.focus())
 }
 
 const langOptions = computed(() => {
@@ -104,20 +119,23 @@ watch(() => settings.value.language, (newValue) => {
       <SettingsItem
         :title="$t('settings.low_performance_preset')"
         :desc="$t(presetDescriptionKey)"
+        data-settings-key="settings.low_performance_preset"
         right-width="auto"
       >
-        <Button
-          type="primary"
-          size="small"
-          :disabled="!enabledPresetOptions.length"
-          @click="handleApplyLowPerformancePreset"
-        >
-          {{ $t('settings.low_performance_preset_apply') }}
-        </Button>
+        <div ref="presetApplyControlRef">
+          <Button
+            type="primary"
+            size="small"
+            :disabled="!enabledPresetOptions.length"
+            @click="handleApplyLowPerformancePreset"
+          >
+            {{ $t('settings.low_performance_preset_apply') }}
+          </Button>
+        </div>
         <template v-if="canUndo" #bottom>
-          <div flex="~ items-center justify-between gap-4">
+          <div ref="presetUndoControlRef" flex="~ items-center justify-between gap-4">
             <span text="sm $bew-text-2">{{ $t('settings.low_performance_preset_undo_desc') }}</span>
-            <Button type="secondary" size="small" @click="undoLowPerformancePreset">
+            <Button type="secondary" size="small" @click="handleUndoLowPerformancePreset">
               {{ $t('common.undo') }}
             </Button>
           </div>
