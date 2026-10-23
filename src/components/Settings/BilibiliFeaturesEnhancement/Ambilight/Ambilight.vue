@@ -94,7 +94,7 @@ function resetAmbilightEffects() {
 </script>
 
 <template>
-  <SettingsItemGroup :title="t('settings.ambilight.title')">
+  <SettingsItemGroup :title="t('settings.ambilight.title')" data-settings-key="settings.ambilight.title">
     <SettingsItem
       :title="t('settings.ambilight.enable')"
       :badge="t('settings.badge_performance_impact')"

@@ -169,6 +169,7 @@ const momentsTabsPositionOptions = computed<{ label: string, value: TabsPosition
       <SettingsItem
         :title="$t('settings.moments_grid_columns')"
         :desc="$t('settings.moments_grid_columns_desc')"
+        data-settings-key="settings.moments_grid_columns"
         right-width="auto"
       >
         <SettingsSegmentedControl

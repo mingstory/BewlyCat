@@ -76,6 +76,7 @@ const commentReplyPaginationModeOptions = computed<{ label: string, value: Comme
     <SettingsItem
       :title="$t('settings.enable_comment_reply_tree_display')"
       :desc="$t('settings.enable_comment_reply_tree_display_desc')"
+      data-settings-key="settings.enable_comment_reply_tree_display"
       right-width="auto"
     >
       <Radio v-model="settings.enableCommentReplyTreeDisplay" />

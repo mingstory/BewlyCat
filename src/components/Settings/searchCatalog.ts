@@ -39,28 +39,40 @@ const nonSettingTitleKeyPatterns = [
   /^settings\.topbar_(display_settings|logo_and_channels|switchers|actions|user_menu)$/,
 ]
 
-function isSettingTitleKey(titleKey: string) {
+export function isSettingTitleKey(titleKey: string) {
   return !nonSettingTitleKeyPatterns.some(pattern => pattern.test(titleKey))
+}
+
+interface CreateEntriesOptions extends Omit<SettingsSearchEntry, 'titleKey' | 'menu' | 'secondaryTitleKey' | 'storageValues'> {
+  storageValues?: SettingsSearchStorageValue[]
+  keywordKeysByTitleKey?: Record<string, string[]>
 }
 
 function createEntries(
   route: SearchRoute,
   titleKeys: string[],
-  options: Omit<SettingsSearchEntry, 'titleKey' | 'menu' | 'secondaryTitleKey' | 'storageValues'> & {
-    storageValues?: SettingsSearchStorageValue[]
-  } = {},
+  options: CreateEntriesOptions = {},
 ): SettingsSearchEntry[] {
+  const { keywordKeysByTitleKey, ...entryOptions } = options
   const routeStorageValues = route.secondaryPage
     ? [{ key: route.storageKey ?? bewlyPagesStorageKey, value: route.secondaryPage }]
     : []
 
-  return titleKeys.filter(isSettingTitleKey).map(titleKey => ({
-    titleKey,
-    menu: route.menu,
-    secondaryTitleKey: route.secondaryTitleKey,
-    ...options,
-    storageValues: [...routeStorageValues, ...(options.storageValues ?? [])],
-  }))
+  return titleKeys.filter(isSettingTitleKey).map((titleKey) => {
+    const keywordKeys = [
+      ...(entryOptions.keywordKeys ?? []),
+      ...(keywordKeysByTitleKey?.[titleKey] ?? []),
+    ]
+
+    return {
+      titleKey,
+      menu: route.menu,
+      secondaryTitleKey: route.secondaryTitleKey,
+      ...entryOptions,
+      ...(keywordKeys.length ? { keywordKeys } : {}),
+      storageValues: [...routeStorageValues, ...(entryOptions.storageValues ?? [])],
+    }
+  })
 }
 
 const generalRoute: SearchRoute = { menu: MenuType.General }
@@ -345,6 +357,7 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
     'settings.moments_wanted_users',
     'settings.group_moments_pinned_users',
     'settings.moments_pinned_users',
+    'settings.moments_grid_columns',
   ]),
   ...createEntries(momentsRoute, [
     'settings.moments_filter_up_recommendation',
@@ -411,7 +424,12 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
     'video_card.operation.block_user',
     'settings.video_card_shadow_curve',
     'settings.video_card_shadow_height',
-  ]),
+  ], {
+    keywordKeysByTitleKey: {
+      'settings.grid_breakpoints': ['settings.grid_columns_unit'],
+      'settings.video_card_layout': ['settings.video_card_shadow_reset'],
+    },
+  }),
   ...createEntries(videoCardRoute, [
     'settings.video_card_title_font_size',
     'settings.video_card_author_font_size',
@@ -493,7 +511,14 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
     'settings.enable_undo_refresh_button',
     'settings.group_sidebar',
     'settings.auto_hide_sidebar',
-  ]),
+  ], {
+    keywordKeysByTitleKey: {
+      'settings.dock_content_adjustment': [
+        'settings.dock_item_open_in_new_tab',
+        'settings.dock_item_use_original_bili_web_page',
+      ],
+    },
+  }),
   ...createEntries(dockRoute, [
     'settings.dock_position',
   ], { keywordKeys: ['common.position.left', 'common.position.right', 'common.position.bottom'] }),
@@ -542,7 +567,18 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
     'settings.ambilight.blur',
     'settings.ambilight.saturation',
     'settings.ambilight.fps',
-  ]),
+  ], {
+    keywordKeysByTitleKey: {
+      'settings.ambilight.title': [
+        'settings.ambilight.preset_soft',
+        'settings.ambilight.preset_cinema',
+        'settings.ambilight.preset_vivid',
+        'settings.ambilight.fps_15',
+        'settings.ambilight.fps_24',
+        'settings.ambilight.fps_30',
+      ],
+    },
+  }),
   ...createEntries(playerRoute, [
     'settings.bilibili_features.video_playback',
     'settings.group_player_display_mode',
@@ -730,7 +766,16 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
     'settings.comment_reply_tree_mode.indent_only',
     'settings.adjust_comment_image_height',
     'settings.hide_comment_image_scrollbar',
-  ]),
+  ], {
+    keywordKeysByTitleKey: {
+      'settings.enable_comment_reply_tree_display': [
+        'settings.comment_reply_pagination_mode.title',
+        'settings.comment_reply_pagination_mode.desc',
+        'settings.comment_reply_pagination_mode.load_more',
+        'settings.comment_reply_pagination_mode.pagination',
+      ],
+    },
+  }),
   ...createEntries(vipFeaturesRoute, [
     'settings.bilibili_features.vip_features',
     'settings.show_bcoin_receive_reminder',

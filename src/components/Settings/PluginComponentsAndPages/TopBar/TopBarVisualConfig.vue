@@ -229,6 +229,7 @@ watch(topBarComponents, ensureTopBarComponentsConfig, { immediate: true })
       <SettingsItem
         :title="$t('settings.top_bar_logo_style')"
         :desc="$t('settings.top_bar_logo_style_desc')"
+        data-settings-key="settings.top_bar_logo_style"
         right-width="auto"
       >
         <div

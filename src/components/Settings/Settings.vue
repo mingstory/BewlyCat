@@ -272,7 +272,7 @@ function getTranslatedSearchTerms(key: string): string[] {
 
 function getSearchEntryText(entry: SettingsSearchEntry) {
   const inferredKeywordKeys = entry.titleKey
-    ? [`${entry.titleKey}_desc`, `${entry.titleKey}_opt`, `${entry.titleKey}_option`]
+    ? [`${entry.titleKey}_desc`, `${entry.titleKey}_opt`, `${entry.titleKey}_option`, `${entry.titleKey}_unit`]
     : []
   const translatedKeywords = [...inferredKeywordKeys, ...(entry.keywordKeys ?? [])]
     .flatMap(getTranslatedSearchTerms)
@@ -383,14 +383,19 @@ function highlightSearchTarget(target: HTMLElement) {
   searchTargetHighlightTimer = window.setTimeout(clearSearchTargetHighlight, 2400)
 }
 
-function scrollToSearchTarget(expectedTitle: string | undefined, navigationId: number, attempts = 0) {
-  if (!expectedTitle || navigationId !== searchNavigationId || attempts > 30)
+function scrollToSearchTarget(targetKey: string | undefined, expectedTitle: string | undefined, navigationId: number, attempts = 0) {
+  if ((!targetKey && !expectedTitle) || navigationId !== searchNavigationId)
     return
+  if (attempts > 30) {
+    if (__DEV__)
+      console.warn('[settings-search] 搜索目标未找到', { targetKey, expectedTitle, menu: activatedMenuItem.value })
+    return
+  }
 
   const retry = () => {
     searchTargetRetryTimer = window.setTimeout(() => {
       searchTargetRetryTimer = undefined
-      scrollToSearchTarget(expectedTitle, navigationId, attempts + 1)
+      scrollToSearchTarget(targetKey, expectedTitle, navigationId, attempts + 1)
     }, 100)
   }
   const viewport = scrollViewportRef.value
@@ -400,7 +405,10 @@ function scrollToSearchTarget(expectedTitle: string | undefined, navigationId: n
     return
   }
 
-  const target = Array.from(viewport.querySelectorAll<HTMLElement>('[data-settings-title]'))
+  const keyedTarget = targetKey
+    ? viewport.querySelector<HTMLElement>(`[data-settings-key="${CSS.escape(targetKey)}"]`)
+    : null
+  const target = keyedTarget ?? Array.from(viewport.querySelectorAll<HTMLElement>('[data-settings-title]'))
     .find(element => element.dataset.settingsTitle === expectedTitle)
   if (!target) {
     retry()
@@ -457,7 +465,8 @@ function navigateToSearchResult(entry: SettingsSearchEntry) {
   const targetTitle = entry.targetTitleKey
     ? t(entry.targetTitleKey)
     : entry.targetTitle ?? getSearchEntryTitle(entry)
-  nextTick(() => scrollToSearchTarget(targetTitle, navigationId))
+  const targetKey = entry.targetTitleKey ?? entry.titleKey
+  nextTick(() => scrollToSearchTarget(targetKey, targetTitle, navigationId))
 }
 
 const secondaryPageStorageKeys: Partial<Record<MenuType, string>> = {
