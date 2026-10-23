@@ -1,8 +1,36 @@
+import { ambilightFpsOptions, ambilightPresetOptions } from './definitions/ambilight'
+import type { MomentTagOption } from './definitions/moments'
+import { originalComponentOptions, pluginComponentOptions, pluginFilterOptions } from './definitions/moments'
+import { configurableShortcutsGroups } from './definitions/shortcuts'
+import { topBarComponentDefinitions } from './definitions/topbar'
 import { MenuType } from './types'
 
 export interface SettingsSearchStorageValue {
   key: string
   value: string
+}
+
+const configurableShortcutDefinitions = configurableShortcutsGroups.flatMap(group => group.shortcuts)
+const configurableShortcutTitleKeys = configurableShortcutDefinitions.map(shortcut => shortcut.nameKey)
+const configurableShortcutKeywordKeys = Object.fromEntries(
+  configurableShortcutDefinitions.map(shortcut => [shortcut.nameKey, [shortcut.descriptionKey]]),
+)
+const ambilightOptionKeywordKeys = [...ambilightPresetOptions, ...ambilightFpsOptions]
+  .map(option => option.labelKey)
+const topBarSearchComponents = topBarComponentDefinitions
+  .filter(component => component.key !== 'topBarSwitcher')
+  .sort((a, b) => a.searchOrder - b.searchOrder)
+const topBarComponentKeywordKeys = Object.fromEntries(
+  topBarSearchComponents.map(component => [
+    component.i18nKey,
+    component.supportsBadge
+      ? ['settings.visibility', 'settings.badge_type', 'settings.top_bar_icon_badges_opt']
+      : ['settings.visibility'],
+  ]),
+)
+
+function getMomentOptionTitleKeys(options: MomentTagOption[]) {
+  return options.filter(option => option.searchable !== false).map(option => option.labelKey)
 }
 
 export interface SettingsSearchEntry {
@@ -317,19 +345,11 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
   ...createEntries(momentsRoute, [
     'settings.plugin.moments',
     'settings.group_original_moments_page',
-    'settings.original_moments_show_user_card',
-    'settings.original_moments_show_live_list',
-    'settings.original_moments_show_community_center',
-    'settings.original_moments_show_hot_search',
-    'settings.original_moments_show_up_list',
+    ...getMomentOptionTitleKeys(originalComponentOptions),
     'settings.group_new_moments_page',
     'settings.moments_visible_components',
     'settings.moments_filtered_types',
-    'settings.moments_show_user_card',
-    'settings.moments_show_publish',
-    'settings.moments_show_live',
-    'settings.moments_show_hot_search',
-    'settings.moments_show_up_list',
+    ...getMomentOptionTitleKeys(pluginComponentOptions),
     'settings.moments_tabs_position',
     'settings.moments_start_from_last_seen',
     'settings.moments_enable_live_preview',
@@ -341,16 +361,7 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
     'settings.moments_card_open_mode',
     'settings.moments_video_card_open_mode',
     'settings.group_moments_filters',
-    'settings.moments_filter_video_dynamic',
-    'settings.moments_filter_draw_dynamic',
-    'settings.moments_filter_ugc_season_dynamic',
-    'settings.moments_filter_forward_dynamic',
-    'settings.moments_filter_pgc_dynamic',
-    'settings.moments_filter_article_dynamic',
-    'settings.moments_filter_charge_dynamic',
-    'settings.moments_filter_video_reservation',
-    'settings.moments_filter_live_reservation',
-    'settings.moments_filter_live_dynamic',
+    ...getMomentOptionTitleKeys(pluginFilterOptions),
     'settings.moments_keyword_filter',
     'settings.original_moments_use_bewly_filters',
     'settings.group_moments_wanted_users',
@@ -469,21 +480,9 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
     'settings.topbar_user_menu',
     'settings.hide_lv6_last_login_location_in_top_bar_user_pop',
   ]),
-  ...[
-    ['moments', 'topbar.moments'],
-    ['watchLater', 'topbar.watch_later'],
-    ['notifications', 'topbar.notifications'],
-  ].flatMap(([, titleKey]) => createEntries(topBarRoute, [titleKey!], {
-    keywordKeys: ['settings.visibility', 'settings.badge_type', 'settings.top_bar_icon_badges_opt'],
-  })),
-  ...[
-    ['favorites', 'topbar.favorites'],
-    ['history', 'topbar.history'],
-    ['creatorCenter', 'topbar.creative_center'],
-    ['upload', 'topbar.upload'],
-  ].flatMap(([, titleKey]) => createEntries(topBarRoute, [titleKey!], {
-    keywordKeys: ['settings.visibility'],
-  })),
+  ...createEntries(topBarRoute, topBarSearchComponents.map(component => component.i18nKey), {
+    keywordKeysByTitleKey: topBarComponentKeywordKeys,
+  }),
   ...createEntries(topBarRoute, [
     'topbar.top_bar_switcher',
   ], {
@@ -570,14 +569,7 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
     'settings.ambilight.fps',
   ], {
     keywordKeysByTitleKey: {
-      'settings.ambilight.title': [
-        'settings.ambilight.preset_soft',
-        'settings.ambilight.preset_cinema',
-        'settings.ambilight.preset_vivid',
-        'settings.ambilight.fps_15',
-        'settings.ambilight.fps_24',
-        'settings.ambilight.fps_30',
-      ],
+      'settings.ambilight.title': ambilightOptionKeywordKeys,
     },
   }),
   ...createEntries(playerRoute, [
@@ -802,37 +794,11 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
   ...createEntries(shortcutsRoute, [
     'settings.shortcuts.title',
     'settings.shortcuts.enable_all_shortcuts_toggle',
-    'settings.shortcuts.group.homepage',
-    'settings.shortcuts.home_refresh',
-    'settings.shortcuts.group.general',
-    'settings.shortcuts.danmu_status',
-    'settings.shortcuts.web_fullscreen',
-    'settings.shortcuts.widescreen',
-    'settings.shortcuts.bewly_widescreen',
-    'settings.shortcuts.short_step_backward',
-    'settings.shortcuts.long_step_backward',
-    'settings.shortcuts.play_pause_ext',
-    'settings.shortcuts.short_step_forward',
-    'settings.shortcuts.long_step_forward',
-    'settings.shortcuts.pip',
-    'settings.shortcuts.turn_off_light',
-    'settings.shortcuts.caption',
-    'settings.shortcuts.video_screenshot',
-    'settings.shortcuts.listen_video',
-    'settings.shortcuts.increase_playback_rate',
-    'settings.shortcuts.decrease_playback_rate',
-    'settings.shortcuts.reset_playback_rate',
-    'settings.shortcuts.previous_frame',
-    'settings.shortcuts.next_frame',
-    'settings.shortcuts.replay',
-    'settings.shortcuts.toggle_follow',
-    'settings.shortcuts.group.fullscreen_mode',
-    'settings.shortcuts.increase_video_size',
-    'settings.shortcuts.decrease_video_size',
-    'settings.shortcuts.reset_video_size',
-    'settings.shortcuts.video_title',
-    'settings.shortcuts.video_time',
-    'settings.shortcuts.clock_time',
+  ]),
+  ...createEntries(shortcutsRoute, configurableShortcutTitleKeys, {
+    keywordKeysByTitleKey: configurableShortcutKeywordKeys,
+  }),
+  ...createEntries(shortcutsRoute, [
     'settings.shortcuts.reset_all_ext_shortcuts',
     'settings.shortcuts.group.official_bilibili',
   ]),

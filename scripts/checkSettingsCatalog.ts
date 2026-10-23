@@ -5,6 +5,10 @@ import { fileURLToPath } from 'node:url'
 
 import { parse } from 'vue/compiler-sfc'
 
+import { ambilightFpsOptions, ambilightPresetOptions } from '../src/components/Settings/definitions/ambilight'
+import { originalComponentOptions, pluginComponentOptions, pluginFilterOptions } from '../src/components/Settings/definitions/moments'
+import { configurableShortcutsGroups } from '../src/components/Settings/definitions/shortcuts'
+import { topBarComponentDefinitions } from '../src/components/Settings/definitions/topbar'
 import { isSettingTitleKey, settingsSearchEntries } from '../src/components/Settings/searchCatalog'
 import { SETTINGS_CATALOG_ALLOWLIST } from './settingsCatalogAllowlist'
 
@@ -252,6 +256,45 @@ function validateStaticKeys(locales: LocaleKeys[], targets: Set<string>) {
   }
 }
 
+function validateDefinitions(locales: LocaleKeys[], targets: Set<string>) {
+  for (const group of configurableShortcutsGroups) {
+    for (const shortcut of group.shortcuts) {
+      if (!targets.has(shortcut.nameKey))
+        errors.push(`快捷键定义 "${shortcut.nameKey}" 未出现在搜索目录中`)
+      if (!localeHasStringLeaf(locales, shortcut.descriptionKey))
+        errors.push(`快捷键描述 "${shortcut.descriptionKey}" 在 locale 中缺失或不是字符串叶子`)
+    }
+  }
+
+  const momentGroups = [
+    { label: 'Moments 原始页组件', options: originalComponentOptions },
+    { label: 'Moments 新页组件', options: pluginComponentOptions },
+    { label: 'Moments 过滤项', options: pluginFilterOptions },
+  ]
+  for (const group of momentGroups) {
+    for (const option of group.options) {
+      if (!localeHasStringLeaf(locales, option.labelKey))
+        errors.push(`${group.label} "${option.labelKey}" 在 locale 中缺失或不是字符串叶子`)
+      if (option.searchable !== false && !targets.has(option.labelKey))
+        errors.push(`${group.label} "${option.labelKey}" 未出现在搜索目录中`)
+    }
+  }
+
+  for (const component of topBarComponentDefinitions) {
+    if (!targets.has(component.i18nKey))
+      errors.push(`顶栏组件 "${component.i18nKey}" 未出现在搜索目录中`)
+  }
+
+  const ambilightEntry = settingsSearchEntries.find(entry => entry.titleKey === 'settings.ambilight.title')
+  const ambilightKeywords = new Set(ambilightEntry?.keywordKeys ?? [])
+  for (const option of [...ambilightPresetOptions, ...ambilightFpsOptions]) {
+    if (!localeHasStringLeaf(locales, option.labelKey))
+      errors.push(`环境光选项 "${option.labelKey}" 在 locale 中缺失或不是字符串叶子`)
+    if (!ambilightKeywords.has(option.labelKey))
+      errors.push(`环境光选项 "${option.labelKey}" 未挂到 settings.ambilight.title 的搜索关键词`)
+  }
+}
+
 function main() {
   const localeFiles = readdirSync(localesDirectory)
     .filter(file => file.endsWith('.yml'))
@@ -279,6 +322,7 @@ function main() {
 
   const targets = validateEntries(locales)
   validateStaticKeys(locales, targets)
+  validateDefinitions(locales, targets)
 
   for (const warning of warnings)
     console.warn(`[warn] ${warning}`)

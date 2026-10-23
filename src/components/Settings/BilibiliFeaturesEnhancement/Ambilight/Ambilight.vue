@@ -13,20 +13,19 @@ import SettingsItem from '../../components/SettingsItem.vue'
 import SettingsItemGroup from '../../components/SettingsItemGroup.vue'
 import SettingsItemSubgroup from '../../components/SettingsItemSubgroup.vue'
 import SettingsSegmentedControl from '../../components/SettingsSegmentedControl.vue'
+import { ambilightFpsOptions, ambilightPresetOptions } from '../../definitions/ambilight'
 
 const { t } = useI18n()
 
-const presetOptions = computed(() => [
-  { label: t('settings.ambilight.preset_soft'), value: 'soft' },
-  { label: t('settings.ambilight.preset_cinema'), value: 'cinema' },
-  { label: t('settings.ambilight.preset_vivid'), value: 'vivid' },
-])
+const presetOptions = computed(() => ambilightPresetOptions.map(option => ({
+  label: t(option.labelKey),
+  value: option.value,
+})))
 
-const fpsOptions = computed(() => [
-  { label: t('settings.ambilight.fps_15'), value: 15 },
-  { label: t('settings.ambilight.fps_24'), value: 24 },
-  { label: t('settings.ambilight.fps_30'), value: 30 },
-])
+const fpsOptions = computed(() => ambilightFpsOptions.map(option => ({
+  label: t(option.labelKey),
+  value: option.value,
+})))
 
 const PRESET_CONFIGS: Record<AmbilightPreset, {
   ambilightStrength: number

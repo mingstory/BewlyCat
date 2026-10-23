@@ -12,6 +12,8 @@ import type { NotificationBadgeSettings } from '~/utils/notificationBadge'
 
 import SettingsItem from '../../components/SettingsItem.vue'
 import SettingsItemGroup from '../../components/SettingsItemGroup.vue'
+import type { TopBarComponentDefinition } from '../../definitions/topbar'
+import { topBarComponentDefinitions } from '../../definitions/topbar'
 import PinnedChannelsManager from './PinnedChannelsManager.vue'
 
 const { t } = useI18n()
@@ -28,63 +30,7 @@ const notificationTypes: { key: NotificationBadgeType, title: string }[] = [
   { key: 'showUnfollowedPrivateMessageUnreadCount', title: 'settings.notification_unfollowed_private_messages' },
 ]
 
-interface TopBarComponent {
-  key: string
-  i18nKey: string
-  icon: string
-  supportsBadge: boolean
-}
-
-const topBarComponents = computed<TopBarComponent[]>(() => [
-  {
-    key: 'moments',
-    i18nKey: 'topbar.moments',
-    icon: 'i-tabler:windmill',
-    supportsBadge: true,
-  },
-  {
-    key: 'favorites',
-    i18nKey: 'topbar.favorites',
-    icon: 'i-mingcute:star-line',
-    supportsBadge: false,
-  },
-  {
-    key: 'history',
-    i18nKey: 'topbar.history',
-    icon: 'i-mingcute:time-line',
-    supportsBadge: false,
-  },
-  {
-    key: 'watchLater',
-    i18nKey: 'topbar.watch_later',
-    icon: 'i-mingcute:carplay-line',
-    supportsBadge: true,
-  },
-  {
-    key: 'creatorCenter',
-    i18nKey: 'topbar.creative_center',
-    icon: 'i-mingcute:bulb-line',
-    supportsBadge: false,
-  },
-  {
-    key: 'upload',
-    i18nKey: 'topbar.upload',
-    icon: 'i-mingcute:upload-line',
-    supportsBadge: false,
-  },
-  {
-    key: 'notifications',
-    i18nKey: 'topbar.notifications',
-    icon: 'i-tabler:bell',
-    supportsBadge: true,
-  },
-  {
-    key: 'topBarSwitcher',
-    i18nKey: 'topbar.top_bar_switcher',
-    icon: 'i-mingcute:refresh-2-line',
-    supportsBadge: false,
-  },
-])
+const topBarComponents = computed(() => topBarComponentDefinitions)
 
 const badgeOptions = computed(() => [
   { label: t('settings.top_bar_icon_badges_opt.number'), value: 'number' },
@@ -116,7 +62,7 @@ const topBarModeOptions = computed(() => [
   { label: t('settings.top_bar_mode_opt.bewly'), value: false },
 ])
 
-function createDefaultComponentConfig(component: TopBarComponent) {
+function createDefaultComponentConfig(component: TopBarComponentDefinition) {
   return {
     key: component.key,
     visible: true,
