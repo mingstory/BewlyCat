@@ -39,6 +39,7 @@ export interface SettingsSearchEntry {
   menu: MenuType
   targetTitleKey?: string
   targetTitle?: string
+  fallbackTargetKey?: string
   secondaryTitleKey?: string
   storageValues?: SettingsSearchStorageValue[]
   keywordKeys?: string[]
@@ -71,9 +72,10 @@ export function isSettingTitleKey(titleKey: string) {
   return !nonSettingTitleKeyPatterns.some(pattern => pattern.test(titleKey))
 }
 
-interface CreateEntriesOptions extends Omit<SettingsSearchEntry, 'titleKey' | 'menu' | 'secondaryTitleKey' | 'storageValues'> {
+interface CreateEntriesOptions extends Omit<SettingsSearchEntry, 'titleKey' | 'menu' | 'secondaryTitleKey' | 'storageValues' | 'fallbackTargetKey'> {
   storageValues?: SettingsSearchStorageValue[]
   keywordKeysByTitleKey?: Record<string, string[]>
+  fallbackTargetKeysByTitleKey?: Record<string, string>
 }
 
 function createEntries(
@@ -81,7 +83,7 @@ function createEntries(
   titleKeys: string[],
   options: CreateEntriesOptions = {},
 ): SettingsSearchEntry[] {
-  const { keywordKeysByTitleKey, ...entryOptions } = options
+  const { fallbackTargetKeysByTitleKey, keywordKeysByTitleKey, ...entryOptions } = options
   const routeStorageValues = route.secondaryPage
     ? [{ key: route.storageKey ?? bewlyPagesStorageKey, value: route.secondaryPage }]
     : []
@@ -91,6 +93,7 @@ function createEntries(
       ...(entryOptions.keywordKeys ?? []),
       ...(keywordKeysByTitleKey?.[titleKey] ?? []),
     ]
+    const fallbackTargetKey = fallbackTargetKeysByTitleKey?.[titleKey]
 
     return {
       titleKey,
@@ -98,6 +101,7 @@ function createEntries(
       secondaryTitleKey: route.secondaryTitleKey,
       ...entryOptions,
       ...(keywordKeys.length ? { keywordKeys } : {}),
+      ...(fallbackTargetKey ? { fallbackTargetKey } : {}),
       storageValues: [...routeStorageValues, ...(entryOptions.storageValues ?? [])],
     }
   })
@@ -369,13 +373,21 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
     'settings.group_moments_pinned_users',
     'settings.moments_pinned_users',
     'settings.moments_grid_columns',
-  ]),
+  ], {
+    keywordKeysByTitleKey: {
+      'settings.moments_filter_charge_dynamic': [
+        'settings.moments_hide_charge_exclusive',
+        'settings.moments_hide_charge_exclusive_desc',
+      ],
+      'settings.moments_tabs_position': [
+        'common.position.left',
+        'common.position.center',
+      ],
+    },
+  }),
   ...createEntries(momentsRoute, [
     'settings.moments_filter_up_recommendation',
   ], { targetTitleKey: 'settings.moments_filter_up_recommendation_short' }),
-  ...createEntries(momentsRoute, [
-    'settings.moments_hide_charge_exclusive',
-  ], { targetTitleKey: 'settings.moments_filter_charge_dynamic' }),
   ...createEntries(favoritesRoute, [
     'settings.plugin.favorites',
     'settings.group_favorite_organizer',
@@ -440,6 +452,10 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
       'settings.grid_breakpoints': ['settings.grid_columns_unit'],
       'settings.video_card_layout': ['settings.video_card_shadow_reset'],
     },
+    fallbackTargetKeysByTitleKey: {
+      'settings.video_card_shadow_curve': 'settings.video_card_layout',
+      'settings.video_card_shadow_height': 'settings.video_card_layout',
+    },
   }),
   ...createEntries(videoCardRoute, [
     'settings.video_card_title_font_size',
@@ -450,7 +466,16 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
   ...createEntries(topBarRoute, [
     'settings.plugin.topbar',
     ...topBarGlobalTitleKeys,
-  ]),
+  ], {
+    keywordKeysByTitleKey: {
+      'settings.notification_badge_types': [
+        'topbar.noti_dropdown.replys',
+        'topbar.noti_dropdown.mentions',
+        'topbar.noti_dropdown.likes',
+        'topbar.noti_dropdown.messages',
+      ],
+    },
+  }),
   ...createEntries(topBarRoute, [
     'settings.topbar_logo_and_channels',
     'settings.top_bar_logo_style',
@@ -569,6 +594,10 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
   ], {
     keywordKeysByTitleKey: {
       'settings.ambilight.title': ambilightOptionKeywordKeys,
+    },
+    fallbackTargetKeysByTitleKey: {
+      'settings.ambilight.preset': 'settings.ambilight.title',
+      'settings.ambilight.fps': 'settings.ambilight.title',
     },
   }),
   ...createEntries(playerRoute, [
@@ -766,6 +795,11 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
         'settings.comment_reply_pagination_mode.load_more',
         'settings.comment_reply_pagination_mode.pagination',
       ],
+    },
+    fallbackTargetKeysByTitleKey: {
+      'settings.enable_comment_reply_tree_container': 'settings.enable_comment_reply_tree_display',
+      'settings.comment_reply_tree_container_height': 'settings.enable_comment_reply_tree_display',
+      'settings.comment_reply_tree_mode.title': 'settings.enable_comment_reply_tree_display',
     },
   }),
   ...createEntries(vipFeaturesRoute, [
