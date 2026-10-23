@@ -79,6 +79,10 @@ jobs:
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: pnpm run knip
 
+      - name: Settings catalog
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: pnpm exec esno scripts/checkSettingsCatalog.ts
+
       - name: Build Extension
         run: pnpm build
 
