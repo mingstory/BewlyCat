@@ -226,6 +226,7 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
     'settings.menu_general',
     'settings.group_language',
     'settings.select_language',
+    'settings.low_performance_preset',
     'settings.group_interaction_layout',
     'settings.touch_screen_optimization',
     'settings.enable_grid_layout_switcher',

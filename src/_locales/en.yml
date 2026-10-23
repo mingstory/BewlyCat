@@ -256,6 +256,15 @@ settings:
   group_common: Common
   group_drawer_behavior: Drawer Behavior
   group_language: Language
+  group_performance_preset: Performance Preset
+  low_performance_preset: Low-performance preset
+  low_performance_preset_desc: Turn off ambilight, frosted glass, the liquid segment indicator, immersive preloading, video card hover previews, and sidebar cover blur in one step. Choose which effects to disable before applying.
+  low_performance_preset_apply: Apply low-performance preset
+  low_performance_preset_confirm_desc: The following settings will be turned off. Clear a switch to keep that effect; you can undo this change afterwards.
+  low_performance_preset_close: Turn off
+  low_performance_preset_keep: Keep on
+  low_performance_preset_undo_desc: Restore the settings from before the preset was applied. Only entries that still match the preset are restored.
+  low_performance_preset_none_enabled: All related effects are already off; the low-performance state is active.
   group_ad_blocking: Ad Blocking
   group_comments: Comments
   group_languages_and_fonts: Languages & Fonts

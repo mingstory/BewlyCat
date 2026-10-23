@@ -1,8 +1,11 @@
 <script lang="ts" setup>
 import { useI18n } from 'vue-i18n'
 
+import Button from '~/components/Button.vue'
 import Radio from '~/components/Radio.vue'
 import Select from '~/components/Select.vue'
+import { useLowPerformancePreset } from '~/components/Settings/composables/useLowPerformancePreset'
+import { useConfirmDialog } from '~/composables/useConfirmDialog'
 import { settings } from '~/logic'
 
 import SettingsItem from '../../components/SettingsItem.vue'
@@ -11,6 +14,43 @@ import SettingsSectionHeading from '../../components/SettingsSectionHeading.vue'
 import LinkOpening from '../../Navigation/LinkOpening.vue'
 
 const { t, locale } = useI18n()
+const { confirm: showConfirmDialog } = useConfirmDialog()
+const {
+  enabledOptions: enabledPresetOptions,
+  hasBackup: hasPresetBackup,
+  applyLowPerformancePreset,
+  undoLowPerformancePreset,
+} = useLowPerformancePreset()
+
+const presetDescriptionKey = computed(() =>
+  enabledPresetOptions.value.length
+    ? 'settings.low_performance_preset_desc'
+    : 'settings.low_performance_preset_none_enabled',
+)
+
+async function handleApplyLowPerformancePreset() {
+  const options = enabledPresetOptions.value
+  if (!options.length)
+    return
+
+  const toggleFields = options.map(option => ({
+    id: option.key,
+    label: t(option.titleKey),
+    value: true,
+    enabledLabel: t('settings.low_performance_preset_close'),
+    disabledLabel: t('settings.low_performance_preset_keep'),
+  }))
+
+  const confirmed = await showConfirmDialog(t('settings.low_performance_preset_confirm_desc'), {
+    title: t('settings.low_performance_preset'),
+    confirmLabel: t('settings.low_performance_preset_apply'),
+    toggleFields,
+  })
+  if (!confirmed)
+    return
+
+  applyLowPerformancePreset(options.filter((_, index) => toggleFields[index]?.value))
+}
 
 const langOptions = computed(() => {
   return [
@@ -53,6 +93,31 @@ watch(() => settings.value.language, (newValue) => {
           :options="langOptions"
           w="160px"
         />
+      </SettingsItem>
+    </SettingsItemGroup>
+
+    <SettingsItemGroup :title="$t('settings.group_performance_preset')">
+      <SettingsItem
+        :title="$t('settings.low_performance_preset')"
+        :desc="$t(presetDescriptionKey)"
+        right-width="auto"
+      >
+        <Button
+          type="primary"
+          size="small"
+          :disabled="!enabledPresetOptions.length"
+          @click="handleApplyLowPerformancePreset"
+        >
+          {{ $t('settings.low_performance_preset_apply') }}
+        </Button>
+        <template v-if="hasPresetBackup" #bottom>
+          <div flex="~ items-center justify-between gap-4">
+            <span text="sm $bew-text-2">{{ $t('settings.low_performance_preset_undo_desc') }}</span>
+            <Button type="secondary" size="small" @click="undoLowPerformancePreset">
+              {{ $t('common.undo') }}
+            </Button>
+          </div>
+        </template>
       </SettingsItem>
     </SettingsItemGroup>
 
