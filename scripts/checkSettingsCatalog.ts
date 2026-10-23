@@ -64,14 +64,30 @@ function collectVueFiles(directory: string): string[] {
   })
 }
 
-function getPropExpression(node: TemplateNode, name: string): string | undefined {
+function getProp(node: TemplateNode, name: string): TemplateProp | undefined {
   for (const prop of node.props ?? []) {
     if (prop.type === 6 && prop.name === name)
-      return prop.value?.content
+      return prop
     if (prop.type === 7 && prop.name === 'bind' && prop.arg?.content === name)
-      return prop.exp?.content
+      return prop
   }
   return undefined
+}
+
+function getPropExpression(node: TemplateNode, name: string): string | undefined {
+  const prop = getProp(node, name)
+  if (!prop)
+    return undefined
+  return prop.type === 6 ? prop.value?.content : prop.exp?.content
+}
+
+function getStringPropLiteral(node: TemplateNode, name: string): string | undefined {
+  const prop = getProp(node, name)
+  if (!prop)
+    return undefined
+  if (prop.type === 6)
+    return prop.value?.content?.trim() || undefined
+  return getStringLiteral(prop.exp?.content)
 }
 
 function getI18nLiteral(expression: string | undefined): string | undefined {
@@ -113,7 +129,7 @@ function collectTemplateKeys(file: string): { titles: StaticKey[], dataKeys: Sta
         if (key && isSettingTitleKey(key))
           titles.push({ file: displayPath(file), line, tag: node.tag, key })
       }
-      const dataKey = getStringLiteral(getPropExpression(node, 'data-settings-key'))
+      const dataKey = getStringPropLiteral(node, 'data-settings-key')
       if (dataKey)
         dataKeys.push({ file: displayPath(file), line, tag: node.tag, key: dataKey })
     }
@@ -212,6 +228,9 @@ function validateEntries(locales: LocaleKeys[]) {
         errors.push(`${displayPath(searchCatalogFile)}:${catalogLine(key)} keywordKey "${key}" 在 locale 中缺失`)
     }
 
+    if (entry.fallbackTargetKey && !localeHasStringLeaf(locales, entry.fallbackTargetKey))
+      errors.push(`${displayPath(searchCatalogFile)}:${catalogLine(entry.fallbackTargetKey)} fallbackTargetKey "${entry.fallbackTargetKey}" 在 locale 中缺失或不是字符串叶子`)
+
     if (entry.titleKey)
       targets.add(entry.titleKey)
     if (entry.targetTitleKey)
@@ -235,6 +254,7 @@ function validateEntries(locales: LocaleKeys[]) {
 function validateStaticKeys(locales: LocaleKeys[], targets: Set<string>) {
   const titles: StaticKey[] = []
   const dataKeys: StaticKey[] = []
+  const usedAllowlistKeys = new Set<string>()
 
   for (const file of collectVueFiles(settingsDirectory)) {
     const collected = collectTemplateKeys(file)
@@ -243,8 +263,12 @@ function validateStaticKeys(locales: LocaleKeys[], targets: Set<string>) {
   }
 
   for (const title of titles) {
-    if (targets.has(title.key) || Object.hasOwn(SETTINGS_CATALOG_ALLOWLIST, title.key))
+    if (targets.has(title.key))
       continue
+    if (Object.hasOwn(SETTINGS_CATALOG_ALLOWLIST, title.key)) {
+      usedAllowlistKeys.add(title.key)
+      continue
+    }
     errors.push(`${title.file}:${title.line} 标题 key "${title.key}" 未出现在任何搜索条目中；请新增条目或加入 allowlist`)
   }
 
@@ -253,6 +277,19 @@ function validateStaticKeys(locales: LocaleKeys[], targets: Set<string>) {
       errors.push(`${dataKey.file}:${dataKey.line} data-settings-key "${dataKey.key}" 在 locale 中缺失或不是字符串叶子`)
     if (!targets.has(dataKey.key))
       errors.push(`${dataKey.file}:${dataKey.line} data-settings-key "${dataKey.key}" 未对应任何搜索条目的 titleKey/targetTitleKey`)
+  }
+
+  const dataKeySet = new Set(dataKeys.map(dataKey => dataKey.key))
+  for (const entry of settingsSearchEntries) {
+    if (entry.fallbackTargetKey && !dataKeySet.has(entry.fallbackTargetKey))
+      errors.push(`条目 "${entry.titleKey ?? entry.title ?? ''}" 的 fallbackTargetKey "${entry.fallbackTargetKey}" 没有对应的 data-settings-key`)
+  }
+
+  for (const key of Object.keys(SETTINGS_CATALOG_ALLOWLIST)) {
+    if (!localeHasStringLeaf(locales, key))
+      errors.push(`allowlist key "${key}" 在 locale 中缺失或不是字符串叶子`)
+    if (!usedAllowlistKeys.has(key))
+      warnings.push(`allowlist key "${key}" 未被任何静态标题使用`)
   }
 }
 
@@ -275,12 +312,23 @@ function validateDefinitions(locales: LocaleKeys[], targets: Set<string>) {
     for (const option of group.options) {
       if (!localeHasStringLeaf(locales, option.labelKey))
         errors.push(`${group.label} "${option.labelKey}" 在 locale 中缺失或不是字符串叶子`)
-      if (option.searchable !== false && !targets.has(option.labelKey))
+      if (option.searchable === false) {
+        if (!option.searchTitleKey)
+          errors.push(`${group.label} "${option.labelKey}" 标记为不可独立搜索，但缺少 searchTitleKey`)
+        else if (!targets.has(option.searchTitleKey))
+          errors.push(`${group.label} 的手工搜索条目 "${option.searchTitleKey}" 不存在`)
+      }
+      else if (!targets.has(option.labelKey)) {
         errors.push(`${group.label} "${option.labelKey}" 未出现在搜索目录中`)
+      }
     }
   }
 
+  const searchOrders = new Set<number>()
   for (const component of topBarComponentDefinitions) {
+    if (searchOrders.has(component.searchOrder))
+      errors.push(`顶栏组件 "${component.i18nKey}" 的 searchOrder ${component.searchOrder} 重复`)
+    searchOrders.add(component.searchOrder)
     if (!targets.has(component.i18nKey))
       errors.push(`顶栏组件 "${component.i18nKey}" 未出现在搜索目录中`)
   }

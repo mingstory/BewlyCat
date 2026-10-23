@@ -383,19 +383,25 @@ function highlightSearchTarget(target: HTMLElement) {
   searchTargetHighlightTimer = window.setTimeout(clearSearchTargetHighlight, 2400)
 }
 
-function scrollToSearchTarget(targetKey: string | undefined, expectedTitle: string | undefined, navigationId: number, attempts = 0) {
-  if ((!targetKey && !expectedTitle) || navigationId !== searchNavigationId)
+function scrollToSearchTarget(
+  targetKey: string | undefined,
+  expectedTitle: string | undefined,
+  fallbackTargetKey: string | undefined,
+  navigationId: number,
+  attempts = 0,
+) {
+  if ((!targetKey && !expectedTitle && !fallbackTargetKey) || navigationId !== searchNavigationId)
     return
   if (attempts > 30) {
     if (__DEV__)
-      console.warn('[settings-search] 搜索目标未找到', { targetKey, expectedTitle, menu: activatedMenuItem.value })
+      console.warn('[settings-search] 搜索目标未找到', { targetKey, expectedTitle, fallbackTargetKey, menu: activatedMenuItem.value })
     return
   }
 
   const retry = () => {
     searchTargetRetryTimer = window.setTimeout(() => {
       searchTargetRetryTimer = undefined
-      scrollToSearchTarget(targetKey, expectedTitle, navigationId, attempts + 1)
+      scrollToSearchTarget(targetKey, expectedTitle, fallbackTargetKey, navigationId, attempts + 1)
     }, 100)
   }
   const viewport = scrollViewportRef.value
@@ -405,11 +411,15 @@ function scrollToSearchTarget(targetKey: string | undefined, expectedTitle: stri
     return
   }
 
-  const keyedTarget = targetKey
-    ? viewport.querySelector<HTMLElement>(`[data-settings-key="${CSS.escape(targetKey)}"]`)
+  const queryByKey = (key: string) => viewport.querySelector<HTMLElement>(`[data-settings-key="${CSS.escape(key)}"]`)
+  const keyedTarget = targetKey ? queryByKey(targetKey) : null
+  const titleTarget = expectedTitle
+    ? Array.from(viewport.querySelectorAll<HTMLElement>('[data-settings-title]'))
+        .find(element => element.dataset.settingsTitle === expectedTitle)
     : null
-  const target = keyedTarget ?? Array.from(viewport.querySelectorAll<HTMLElement>('[data-settings-title]'))
-    .find(element => element.dataset.settingsTitle === expectedTitle)
+  // 条件渲染的目标可能不存在；给它两轮挂载时间后落到始终可见的父项。
+  const fallbackTarget = fallbackTargetKey && attempts >= 2 ? queryByKey(fallbackTargetKey) : null
+  const target = keyedTarget ?? titleTarget ?? fallbackTarget
   if (!target) {
     retry()
     return
@@ -466,7 +476,7 @@ function navigateToSearchResult(entry: SettingsSearchEntry) {
     ? t(entry.targetTitleKey)
     : entry.targetTitle ?? getSearchEntryTitle(entry)
   const targetKey = entry.targetTitleKey ?? entry.titleKey
-  nextTick(() => scrollToSearchTarget(targetKey, targetTitle, navigationId))
+  nextTick(() => scrollToSearchTarget(targetKey, targetTitle, entry.fallbackTargetKey, navigationId))
 }
 
 const secondaryPageStorageKeys: Partial<Record<MenuType, string>> = {

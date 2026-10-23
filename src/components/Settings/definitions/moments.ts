@@ -26,6 +26,8 @@ export interface MomentTagOption {
   labelKey: string
   icon: string
   searchable?: boolean
+  // searchable 为 false 时，指向目录中手工维护的搜索条目。
+  searchTitleKey?: string
 }
 
 export const originalComponentOptions: MomentTagOption[] = [
@@ -52,7 +54,7 @@ export const pluginFilterOptions: MomentTagOption[] = [
   { setting: 'momentsHidePgcDynamics', labelKey: 'settings.moments_filter_pgc_dynamic', icon: 'i-tabler-device-tv' },
   { setting: 'momentsHideArticleDynamics', labelKey: 'settings.moments_filter_article_dynamic', icon: 'i-tabler-news' },
   // 该选项没有同名搜索条目，由 settings.moments_filter_up_recommendation 条目定位。
-  { setting: 'momentsFilterUpRecommendation', labelKey: 'settings.moments_filter_up_recommendation_short', icon: 'i-tabler-sparkles', searchable: false },
+  { setting: 'momentsFilterUpRecommendation', labelKey: 'settings.moments_filter_up_recommendation_short', icon: 'i-tabler-sparkles', searchable: false, searchTitleKey: 'settings.moments_filter_up_recommendation' },
   { setting: 'momentsHideChargeExclusive', labelKey: 'settings.moments_filter_charge_dynamic', icon: 'i-tabler-battery-charging' },
   { setting: 'momentsHideVideoReservation', labelKey: 'settings.moments_filter_video_reservation', icon: 'i-tabler-calendar-time' },
   { setting: 'momentsHideLiveReservation', labelKey: 'settings.moments_filter_live_reservation', icon: 'i-tabler-calendar-event' },

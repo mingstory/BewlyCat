@@ -26,28 +26,28 @@ const toast = useToast()
 // --- 类型定义 ---
 interface OfficialShortcut {
   key: string
-  description: string
+  descriptionKey: string
 }
 
 // --- 快捷键数据 ---
 const officialShortcuts: OfficialShortcut[] = [
-  { key: 'Space', description: t('settings.shortcuts.official.play_pause') },
-  { key: '→', description: t('settings.shortcuts.official.forward') },
-  { key: '←', description: t('settings.shortcuts.official.backward') },
-  { key: '↑', description: t('settings.shortcuts.official.volume_up') },
-  { key: '↓', description: t('settings.shortcuts.official.volume_down') },
-  { key: 'Esc', description: t('settings.shortcuts.official.exit_fullscreen') },
-  { key: 'F', description: t('settings.shortcuts.official.fullscreen') },
-  { key: 'D', description: t('settings.shortcuts.official.danmu_toggle') },
-  { key: 'M', description: t('settings.shortcuts.official.mute') },
-  { key: 'Q', description: t('settings.shortcuts.official.like') },
-  { key: 'W', description: t('settings.shortcuts.official.coin') },
-  { key: 'E', description: t('settings.shortcuts.official.favorite') },
-  { key: '[', description: t('settings.shortcuts.official.prev_video') },
-  { key: ']', description: t('settings.shortcuts.official.next_video') },
-  { key: 'Shift + 1', description: t('settings.shortcuts.official.speed_1') },
-  { key: 'Shift + 2', description: t('settings.shortcuts.official.speed_2') },
-  { key: 'Enter', description: t('settings.shortcuts.official.input_danmu') },
+  { key: 'Space', descriptionKey: 'settings.shortcuts.official.play_pause' },
+  { key: '→', descriptionKey: 'settings.shortcuts.official.forward' },
+  { key: '←', descriptionKey: 'settings.shortcuts.official.backward' },
+  { key: '↑', descriptionKey: 'settings.shortcuts.official.volume_up' },
+  { key: '↓', descriptionKey: 'settings.shortcuts.official.volume_down' },
+  { key: 'Esc', descriptionKey: 'settings.shortcuts.official.exit_fullscreen' },
+  { key: 'F', descriptionKey: 'settings.shortcuts.official.fullscreen' },
+  { key: 'D', descriptionKey: 'settings.shortcuts.official.danmu_toggle' },
+  { key: 'M', descriptionKey: 'settings.shortcuts.official.mute' },
+  { key: 'Q', descriptionKey: 'settings.shortcuts.official.like' },
+  { key: 'W', descriptionKey: 'settings.shortcuts.official.coin' },
+  { key: 'E', descriptionKey: 'settings.shortcuts.official.favorite' },
+  { key: '[', descriptionKey: 'settings.shortcuts.official.prev_video' },
+  { key: ']', descriptionKey: 'settings.shortcuts.official.next_video' },
+  { key: 'Shift + 1', descriptionKey: 'settings.shortcuts.official.speed_1' },
+  { key: 'Shift + 2', descriptionKey: 'settings.shortcuts.official.speed_2' },
+  { key: 'Enter', descriptionKey: 'settings.shortcuts.official.input_danmu' },
 ]
 
 // --- Reactive State ---
@@ -339,7 +339,7 @@ function undoResetAllShortcuts() {
         v-for="shortcut in officialShortcuts"
         :key="shortcut.key"
         :title="shortcut.key"
-        :desc="shortcut.description"
+        :desc="t(shortcut.descriptionKey)"
         right-width="auto"
       >
         <div class="shortcut-key-readonly border rounded px-3 py-1 text-sm">
