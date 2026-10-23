@@ -17,7 +17,7 @@ withDefaults(defineProps<{
       class="b-settings-item-row settings-item-content" :class="`right-width-${rightWidth}`" flex="~ gap-4" justify-between items-center
     >
       <div class="left-content" flex-1 min-w-0>
-        <div>
+        <div v-if="title || $slots.title">
           <span class="settings-item-title">
             <slot name="title">
               {{ title }}
@@ -30,7 +30,7 @@ withDefaults(defineProps<{
           class="settings-item-desc"
           text="$bew-text-2"
           break-words
-          :style="{ marginTop: $slots.desc || desc ? '0.25rem' : '0' }"
+          :style="{ marginTop: (title || $slots.title) && ($slots.desc || desc) ? '0.25rem' : '0' }"
         >
           <slot name="desc">
             {{ desc }}

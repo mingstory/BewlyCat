@@ -41,8 +41,6 @@ async function handleApplyLowPerformancePreset() {
     id: option.key,
     label: t(option.labelKey),
     value: true,
-    enabledLabel: t('settings.low_performance_preset_include'),
-    disabledLabel: t('settings.low_performance_preset_skip'),
   }))
 
   const confirmed = await showConfirmDialog(t('settings.low_performance_preset_confirm_desc'), {
@@ -117,7 +115,6 @@ watch(() => settings.value.language, (newValue) => {
 
     <SettingsItemGroup :title="$t('settings.group_performance_preset')">
       <SettingsItem
-        :title="$t('settings.low_performance_preset')"
         :desc="$t(presetDescriptionKey)"
         data-settings-key="settings.low_performance_preset"
         right-width="auto"
@@ -133,9 +130,14 @@ watch(() => settings.value.language, (newValue) => {
           </Button>
         </div>
         <template v-if="canUndo" #bottom>
-          <div ref="presetUndoControlRef" flex="~ items-center justify-between gap-4">
-            <span text="sm $bew-text-2">{{ $t('settings.low_performance_preset_undo_desc') }}</span>
-            <Button type="secondary" size="small" @click="handleUndoLowPerformancePreset">
+          <div ref="presetUndoControlRef" flex="~ justify-end">
+            <Button
+              type="secondary"
+              size="small"
+              :aria-label="$t('settings.low_performance_preset_undo_desc')"
+              :title="$t('settings.low_performance_preset_undo_desc')"
+              @click="handleUndoLowPerformancePreset"
+            >
               {{ $t('common.undo') }}
             </Button>
           </div>

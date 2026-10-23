@@ -14,7 +14,7 @@ const model = defineModel()
     :class="{ disabled }" cursor="pointer" pointer="auto" flex items-center
     gap-3
   >
-    <span>{{ label }}</span>
+    <span v-if="label">{{ label }}</span>
     <input
       v-model="model"
       type="checkbox"

@@ -178,7 +178,7 @@ settings:
     placeholder: 搜尋設定
     no_results: 找不到相關設定
     located: 已定位到此設定
-  category_general_desc: 設定語言、效能預設、互動版面、連結開啟方式與抽屜行為。
+  category_general_desc: 設定語言、低效能預設、互動版面、連結開啟方式與抽屜行為。
   category_appearance_desc: 設定毛玻璃、主題顏色、桌布、字型、自訂樣式與其他頁面的適配。
   category_shortcuts_desc: 啟用、修改或還原 BewlyCat 與播放器快速鍵。
   breadcrumb: 設定位置
@@ -256,13 +256,11 @@ settings:
   group_common: 常用
   group_drawer_behavior: 抽屜行為
   group_language: 語言
-  group_performance_preset: 效能預設
+  group_performance_preset: 低效能預設
   low_performance_preset: 低效能預設
-  low_performance_preset_desc: 一鍵關閉影片環境光、毛玻璃效果、液態分段指示器、沉浸式預先載入、影片卡片懸停預覽與側邊欄封面模糊，適合低效能裝置。套用前可逐項選擇。
-  low_performance_preset_apply: 套用低效能預設
-  low_performance_preset_confirm_desc: 將關閉以下已開啟的設定。將開關切換為「跳過」可保留對應效果；套用後仍可復原本次變更。
-  low_performance_preset_include: 納入預設
-  low_performance_preset_skip: 跳過
+  low_performance_preset_desc: 一鍵關閉影片環境光、毛玻璃效果、液態分段指示器、沉浸式預先載入、影片卡片懸停預覽與側邊欄封面模糊，適合低效能裝置。
+  low_performance_preset_apply: 套用
+  low_performance_preset_confirm_desc: 將關閉以下已開啟的設定。關閉對應開關可保留；套用後仍可復原本次變更。
   low_performance_preset_effect_frosted_glass: 毛玻璃效果
   low_performance_preset_effect_liquid_indicator: 液態分段指示器
   low_performance_preset_effect_immersive_preload: 沉浸式預先載入
@@ -270,7 +268,7 @@ settings:
   low_performance_preset_effect_sidebar_cover_blur: 側邊欄封面模糊
   low_performance_preset_applied: 已套用低效能預設
   low_performance_preset_undone: 已還原上次套用前的設定
-  low_performance_preset_undo_desc: 還原上次套用預設前的設定；僅還原目前仍與預設值一致的項目。
+  low_performance_preset_undo_desc: 還原上次套用前的設定
   low_performance_preset_none_enabled: 預設涉及的設定均已關閉。
   group_ad_blocking: 廣告攔截
   group_comments: 評論
