@@ -12,69 +12,11 @@ import SettingsItem from '../../components/SettingsItem.vue'
 import SettingsItemGroup from '../../components/SettingsItemGroup.vue'
 import SettingsSegmentedControl from '../../components/SettingsSegmentedControl.vue'
 import SettingsToggleTag from '../../components/SettingsToggleTag.vue'
+import { originalComponentOptions, pluginComponentOptions, pluginFilterOptions } from '../../definitions/moments'
 import WantedUsersManager from './WantedUsersManager.vue'
 
 const { t } = useI18n()
 const { confirm: showConfirmDialog } = useConfirmDialog()
-
-type MomentToggleSetting
-  = | 'originalMomentsShowUserCard'
-    | 'originalMomentsShowLiveList'
-    | 'originalMomentsShowCommunityCenter'
-    | 'originalMomentsShowHotSearch'
-    | 'originalMomentsShowUpList'
-    | 'momentsSidebarShowUserCard'
-    | 'momentsSidebarShowPublish'
-    | 'momentsSidebarShowLive'
-    | 'momentsSidebarShowHotSearch'
-    | 'momentsShowUpList'
-    | 'momentsFilterUpRecommendation'
-    | 'momentsHideChargeExclusive'
-    | 'momentsHideVideoReservation'
-    | 'momentsHideLiveReservation'
-    | 'momentsHideLiveDynamics'
-    | 'momentsHideVideoDynamics'
-    | 'momentsHideDrawDynamics'
-    | 'momentsHideUgcSeasonDynamics'
-    | 'momentsHideForwardDynamics'
-    | 'momentsHidePgcDynamics'
-    | 'momentsHideArticleDynamics'
-
-interface MomentTagOption {
-  setting: MomentToggleSetting
-  label: string
-  icon: string
-}
-
-const originalComponentOptions = computed<MomentTagOption[]>(() => [
-  { setting: 'originalMomentsShowUserCard', label: t('settings.original_moments_show_user_card'), icon: 'i-tabler-user-square-rounded' },
-  { setting: 'originalMomentsShowLiveList', label: t('settings.original_moments_show_live_list'), icon: 'i-tabler-live-photo' },
-  { setting: 'originalMomentsShowCommunityCenter', label: t('settings.original_moments_show_community_center'), icon: 'i-tabler-layout-dashboard' },
-  { setting: 'originalMomentsShowHotSearch', label: t('settings.original_moments_show_hot_search'), icon: 'i-tabler-flame' },
-  { setting: 'originalMomentsShowUpList', label: t('settings.original_moments_show_up_list'), icon: 'i-tabler-users' },
-])
-
-const pluginComponentOptions = computed<MomentTagOption[]>(() => [
-  { setting: 'momentsSidebarShowUserCard', label: t('settings.moments_show_user_card'), icon: 'i-tabler-user-square-rounded' },
-  { setting: 'momentsSidebarShowPublish', label: t('settings.moments_show_publish'), icon: 'i-tabler-edit' },
-  { setting: 'momentsSidebarShowLive', label: t('settings.moments_show_live'), icon: 'i-tabler-live-photo' },
-  { setting: 'momentsSidebarShowHotSearch', label: t('settings.moments_show_hot_search'), icon: 'i-tabler-flame' },
-  { setting: 'momentsShowUpList', label: t('settings.moments_show_up_list'), icon: 'i-tabler-users' },
-])
-
-const pluginFilterOptions = computed<MomentTagOption[]>(() => [
-  { setting: 'momentsHideVideoDynamics', label: t('settings.moments_filter_video_dynamic'), icon: 'i-tabler-player-play' },
-  { setting: 'momentsHideDrawDynamics', label: t('settings.moments_filter_draw_dynamic'), icon: 'i-tabler-photo' },
-  { setting: 'momentsHideUgcSeasonDynamics', label: t('settings.moments_filter_ugc_season_dynamic'), icon: 'i-tabler-stack' },
-  { setting: 'momentsHideForwardDynamics', label: t('settings.moments_filter_forward_dynamic'), icon: 'i-tabler-repeat' },
-  { setting: 'momentsHidePgcDynamics', label: t('settings.moments_filter_pgc_dynamic'), icon: 'i-tabler-device-tv' },
-  { setting: 'momentsHideArticleDynamics', label: t('settings.moments_filter_article_dynamic'), icon: 'i-tabler-news' },
-  { setting: 'momentsFilterUpRecommendation', label: t('settings.moments_filter_up_recommendation_short'), icon: 'i-tabler-sparkles' },
-  { setting: 'momentsHideChargeExclusive', label: t('settings.moments_filter_charge_dynamic'), icon: 'i-tabler-battery-charging' },
-  { setting: 'momentsHideVideoReservation', label: t('settings.moments_filter_video_reservation'), icon: 'i-tabler-calendar-time' },
-  { setting: 'momentsHideLiveReservation', label: t('settings.moments_filter_live_reservation'), icon: 'i-tabler-calendar-event' },
-  { setting: 'momentsHideLiveDynamics', label: t('settings.moments_filter_live_dynamic'), icon: 'i-tabler-broadcast' },
-])
 
 const openModeOptions = computed(() => [
   {
@@ -160,7 +102,7 @@ const momentsTabsPositionOptions = computed<{ label: string, value: TabsPosition
               v-for="option in pluginComponentOptions"
               :key="option.setting"
               v-model="settings[option.setting]"
-              :label="option.label"
+              :label="t(option.labelKey)"
               :icon="option.icon"
             />
           </div>
@@ -253,7 +195,7 @@ const momentsTabsPositionOptions = computed<{ label: string, value: TabsPosition
               v-for="option in originalComponentOptions"
               :key="option.setting"
               v-model="settings[option.setting]"
-              :label="option.label"
+              :label="t(option.labelKey)"
               :icon="option.icon"
             />
           </div>
@@ -272,7 +214,7 @@ const momentsTabsPositionOptions = computed<{ label: string, value: TabsPosition
               v-for="option in pluginFilterOptions"
               :key="option.setting"
               v-model="settings[option.setting]"
-              :label="option.label"
+              :label="t(option.labelKey)"
               :icon="option.icon"
               inverted
               :show-state-icon="false"
