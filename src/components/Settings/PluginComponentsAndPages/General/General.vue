@@ -119,18 +119,8 @@ watch(() => settings.value.language, (newValue) => {
         data-settings-key="settings.low_performance_preset"
         right-width="auto"
       >
-        <div ref="presetApplyControlRef">
-          <Button
-            type="primary"
-            size="small"
-            :disabled="!enabledPresetOptions.length"
-            @click="handleApplyLowPerformancePreset"
-          >
-            {{ $t('settings.low_performance_preset_apply') }}
-          </Button>
-        </div>
-        <template v-if="canUndo" #bottom>
-          <div ref="presetUndoControlRef" flex="~ justify-end">
+        <div flex="~ items-center gap-2">
+          <div v-if="canUndo" ref="presetUndoControlRef">
             <Button
               type="secondary"
               size="small"
@@ -141,7 +131,17 @@ watch(() => settings.value.language, (newValue) => {
               {{ $t('common.undo') }}
             </Button>
           </div>
-        </template>
+          <div ref="presetApplyControlRef">
+            <Button
+              type="primary"
+              size="small"
+              :disabled="!enabledPresetOptions.length"
+              @click="handleApplyLowPerformancePreset"
+            >
+              {{ $t('settings.low_performance_preset_apply') }}
+            </Button>
+          </div>
+        </div>
       </SettingsItem>
     </SettingsItemGroup>
 
