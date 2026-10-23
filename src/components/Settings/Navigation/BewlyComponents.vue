@@ -1,40 +1,37 @@
 <script setup lang="ts">
-import SettingsCategoryLayout from '../components/SettingsCategoryLayout.vue'
+import type { Component } from 'vue'
 
-const storageKey = 'bewly-settings-bewly-components-page'
+import SettingsCategoryLayout from '../components/SettingsCategoryLayout.vue'
+import type { BewlyComponentPageValue } from '../settingsPageRegistry'
+import { BEWLY_COMPONENT_PAGES_GROUP } from '../settingsPageRegistry'
+
+const storageKey = BEWLY_COMPONENT_PAGES_GROUP.storageKey
 const legacyStorageKey = 'bewly-settings-navigation-page'
-const pageValues = ['video-card', 'topbar', 'dock']
+const pageValues: string[] = BEWLY_COMPONENT_PAGES_GROUP.pages.map(page => page.value)
 const legacyPage = sessionStorage.getItem(legacyStorageKey)
 
 if (!sessionStorage.getItem(storageKey) && legacyPage && pageValues.includes(legacyPage))
   sessionStorage.setItem(storageKey, legacyPage)
 
-const pages = [
-  {
-    value: 'video-card',
-    titleKey: 'settings.plugin.video_card',
-    descriptionKey: 'settings.category_browsing_video_card_desc',
+const pageUi: Record<BewlyComponentPageValue, { icon: string, iconActivated: string, component: Component }> = {
+  'video-card': {
     icon: 'i-mingcute:video-camera-line',
     iconActivated: 'i-mingcute:video-camera-fill',
     component: defineAsyncComponent(() => import('../PluginComponentsAndPages/VideoCard/VideoCard.vue')),
   },
-  {
-    value: 'topbar',
-    titleKey: 'settings.plugin.topbar',
-    descriptionKey: 'settings.category_navigation_topbar_desc',
+  'topbar': {
     icon: 'i-mingcute:layout-top-line',
     iconActivated: 'i-mingcute:layout-top-fill',
     component: defineAsyncComponent(() => import('../PluginComponentsAndPages/TopBar/TopBar.vue')),
   },
-  {
-    value: 'dock',
-    titleKey: 'settings.plugin.dock_and_sidebar',
-    descriptionKey: 'settings.category_navigation_dock_desc',
+  'dock': {
     icon: 'i-mingcute:navigation-line',
     iconActivated: 'i-mingcute:navigation-fill',
     component: defineAsyncComponent(() => import('../PluginComponentsAndPages/DockAndSidebar/DockAndSidebar.vue')),
   },
-]
+}
+
+const pages = BEWLY_COMPONENT_PAGES_GROUP.pages.map(page => ({ ...page, ...pageUi[page.value] }))
 </script>
 
 <template>

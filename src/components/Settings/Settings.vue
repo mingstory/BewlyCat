@@ -11,6 +11,7 @@ import { createTransformer } from '~/utils/transformer'
 import { createPinnedChannelHistory, pinnedChannelHistoryKey } from './composables/usePinnedChannelHistory'
 import type { SettingsSearchEntry } from './searchCatalog'
 import { settingsSearchEntries } from './searchCatalog'
+import { SETTINGS_PAGE_STORAGE_KEYS } from './settingsPageRegistry'
 import type { MenuItem } from './types'
 import { MenuType } from './types'
 
@@ -57,10 +58,10 @@ const settingsMenu = {
 }
 const settingsMenuStorageKey = 'bewly-settings-active-menu'
 const navigationPageStorageKey = 'bewly-settings-navigation-page'
-const bewlyPagesStorageKey = 'bewly-settings-bewly-pages-page'
-const bewlyComponentsStorageKey = 'bewly-settings-bewly-components-page'
+const bewlyPagesStorageKey = SETTINGS_PAGE_STORAGE_KEYS.bewlyPages
+const bewlyComponentsStorageKey = SETTINGS_PAGE_STORAGE_KEYS.bewlyComponents
 const playbackPageStorageKey = 'bewly-settings-playback-page'
-const bilibiliPageStorageKey = 'bewly-settings-bilibili-page'
+const bilibiliPageStorageKey = SETTINGS_PAGE_STORAGE_KEYS.bilibili
 const storedMenuItem = sessionStorage.getItem(settingsMenuStorageKey)
 const legacyNavigationPage = sessionStorage.getItem(navigationPageStorageKey)
 const legacyPlaybackPages: Record<string, string> = {

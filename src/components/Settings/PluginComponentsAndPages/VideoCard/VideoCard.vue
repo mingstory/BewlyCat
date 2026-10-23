@@ -105,7 +105,11 @@ function getCoverRatioProgress(value: number) {
         <Select v-model="settings.videoCardLayout" :options="videoCardLayoutOptions" w="160px" />
       </SettingsItem>
 
-      <SettingsItem :title="$t('settings.enable_video_preview')" right-width="auto">
+      <SettingsItem
+        :title="$t('settings.enable_video_preview')"
+        data-settings-key="settings.enable_video_preview"
+        right-width="auto"
+      >
         <Radio v-model="settings.enableVideoPreview" />
       </SettingsItem>
 
