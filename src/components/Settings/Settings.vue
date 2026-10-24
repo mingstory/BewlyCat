@@ -388,6 +388,7 @@ function getMenuTitle(menu: MenuType) {
 
 let highlightedSearchTarget: HTMLElement | undefined
 let searchTargetHighlightTimer: number | undefined
+let searchTargetResizeObserver: ResizeObserver | undefined
 let searchNavigationId = 0
 let searchTargetRetryTimer: number | undefined
 let searchTargetFrame: number | undefined
@@ -407,6 +408,8 @@ function clearSearchTargetHighlight() {
   if (searchTargetHighlightTimer)
     window.clearTimeout(searchTargetHighlightTimer)
 
+  searchTargetResizeObserver?.disconnect()
+  searchTargetResizeObserver = undefined
   highlightedSearchTarget?.classList.remove('settings-search-target')
   highlightedSearchTarget?.removeAttribute('data-settings-search-highlight')
   highlightedSearchTarget = undefined
@@ -416,13 +419,47 @@ function clearSearchTargetHighlight() {
 function highlightSearchTarget(target: HTMLElement) {
   clearSearchTargetHighlight()
   const visualTarget = target.matches('.b-settings-item-group')
-    ? target.querySelector<HTMLElement>(':scope > .group-heading') ?? target
+    ? target.querySelector<HTMLElement>(':scope > .group-title') ?? target
     : target
 
   highlightedSearchTarget = visualTarget
   visualTarget.dataset.settingsSearchHighlight = t('settings.search.located')
   visualTarget.classList.add('settings-search-target')
   searchTargetHighlightTimer = window.setTimeout(clearSearchTargetHighlight, 2400)
+}
+
+const isElementVisible = (element: HTMLElement) => element.getClientRects().length > 0
+
+function getSearchTargetScrollTop(target: HTMLElement, viewport: HTMLElement) {
+  const targetRect = target.getBoundingClientRect()
+  const viewportRect = viewport.getBoundingClientRect()
+  const headerInset = Number.parseFloat(window.getComputedStyle(viewport).paddingTop) || 0
+  const centerOffset = Math.max(0, (viewport.clientHeight - headerInset - targetRect.height) / 2)
+  return Math.max(0, viewport.scrollTop + targetRect.top - viewportRect.top - viewport.clientTop - headerInset - centerOffset)
+}
+
+function isSearchTargetInViewport(target: HTMLElement, viewport: HTMLElement) {
+  const targetRect = target.getBoundingClientRect()
+  const viewportRect = viewport.getBoundingClientRect()
+  const headerInset = Number.parseFloat(window.getComputedStyle(viewport).paddingTop) || 0
+  const visibleTop = viewportRect.top + headerInset
+  return targetRect.top >= visibleTop - 1 && targetRect.top < viewportRect.bottom - 24
+}
+
+function observeSearchTargetLayout(target: HTMLElement, viewport: HTMLElement, navigationId: number) {
+  searchTargetResizeObserver?.disconnect()
+  const content = viewport.querySelector('main')
+  if (!content)
+    return
+
+  // 懒加载图片或异步内容会在首次滚动后改变高度，按布局变化重新对齐目标。
+  searchTargetResizeObserver = new ResizeObserver(() => {
+    if (navigationId !== searchNavigationId || !viewport.contains(target) || !isElementVisible(target))
+      return
+    if (!isSearchTargetInViewport(target, viewport))
+      viewport.scrollTo({ top: getSearchTargetScrollTop(target, viewport), behavior: 'auto' })
+  })
+  searchTargetResizeObserver.observe(content)
 }
 
 function scrollToSearchTarget(
@@ -453,21 +490,37 @@ function scrollToSearchTarget(
     return
   }
 
-  const queryByKey = (key: string) => viewport.querySelector<HTMLElement>(`[data-settings-key="${CSS.escape(key)}"]`)
+  const isVisibleTarget = isElementVisible
+  const hasClosedDetailsAncestor = (element: HTMLElement) => {
+    let ancestor = element.parentElement
+    while (ancestor && ancestor !== viewport) {
+      if (ancestor instanceof HTMLDetailsElement && !ancestor.open)
+        return true
+      ancestor = ancestor.parentElement
+    }
+    return false
+  }
+  // 折叠中的目标仍可接受，稍后会展开祖先；被 v-show 隐藏的目标则应继续回退。
+  const isUsableTarget = (element: HTMLElement | null): element is HTMLElement =>
+    Boolean(element && (isVisibleTarget(element) || hasClosedDetailsAncestor(element)))
+  const queryByKey = (key: string) => Array.from(
+    viewport.querySelectorAll<HTMLElement>(`[data-settings-key="${CSS.escape(key)}"]`),
+  ).find(isUsableTarget) ?? null
   const keyedTarget = targetKey ? queryByKey(targetKey) : null
   const titleTarget = expectedTitle
     ? Array.from(viewport.querySelectorAll<HTMLElement>('[data-settings-title]'))
-        .find(element => element.dataset.settingsTitle === expectedTitle)
+      .find(element => element.dataset.settingsTitle === expectedTitle && isUsableTarget(element)) ?? null
     : null
   // 条件渲染的目标可能不存在；给它两轮挂载时间后落到始终可见的父项。
   const fallbackTarget = fallbackTargetKey && attempts >= 2 ? queryByKey(fallbackTargetKey) : null
   // 未配置父项的条件设置，兜底到当前页面首个可见标题，至少把用户带到正确页面。
   const pageTarget = attempts >= 10
     ? Array.from(viewport.querySelectorAll<HTMLElement>('[data-settings-title]'))
-        .find(element => element.getClientRects().length > 0)
+      .find(isVisibleTarget) ?? null
     : null
   const target = keyedTarget ?? titleTarget ?? fallbackTarget ?? pageTarget
-  if (pageTarget && target === pageTarget && __DEV__)
+  const usedPageFallback = !keyedTarget && !titleTarget && !fallbackTarget && Boolean(pageTarget)
+  if (usedPageFallback && __DEV__)
     console.warn('[settings-search] 精确目标未找到，回退到页面标题', { targetKey, expectedTitle, fallbackTargetKey })
   if (!target) {
     retry()
@@ -493,21 +546,18 @@ function scrollToSearchTarget(
         retry()
         return
       }
-      if (!target.getClientRects().length) {
+      if (!isVisibleTarget(target)) {
         retry()
         return
       }
 
-      const targetRect = target.getBoundingClientRect()
-      const viewportRect = viewport.getBoundingClientRect()
-      const headerInset = Number.parseFloat(window.getComputedStyle(viewport).paddingTop) || 0
-      const centerOffset = Math.max(0, (viewport.clientHeight - headerInset - targetRect.height) / 2)
       // 只滚动设置容器，避免 scrollIntoView 连带滚动外层页面；避开固定顶栏。
-      viewport.scrollTo({
-        top: Math.max(0, viewport.scrollTop + targetRect.top - viewportRect.top - viewport.clientTop - headerInset - centerOffset),
-        behavior: 'smooth',
-      })
-      highlightSearchTarget(target)
+      viewport.scrollTo({ top: getSearchTargetScrollTop(target, viewport), behavior: 'smooth' })
+      // 页面级兜底只负责把用户带到正确页面，避免把“已定位”标注到无关设置上。
+      if (!usedPageFallback) {
+        highlightSearchTarget(target)
+        observeSearchTargetLayout(target, viewport, navigationId)
+      }
     })
   })
 }
@@ -515,10 +565,12 @@ function scrollToSearchTarget(
 function navigateToSearchResult(entry: SettingsSearchEntry) {
   cancelSearchNavigation()
   const navigationId = searchNavigationId
+  // 页面存储值未变化时保持现有页面实例，避免无意义的整页重挂载。
+  const shouldReloadContent = entry.storageValues?.some(({ key, value }) => sessionStorage.getItem(key) !== value) ?? false
   entry.storageValues?.forEach(({ key, value }) => sessionStorage.setItem(key, value))
 
   activatedMenuItem.value = entry.menu
-  if (entry.storageValues?.length)
+  if (shouldReloadContent)
     settingsContentKey.value++
   searchQuery.value = ''
   const targetTitle = entry.targetTitleKey
