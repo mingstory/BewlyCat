@@ -46,6 +46,7 @@ const listenVideoBackgroundOptions = computed(() => {
     <SettingsItem
       :title="t('settings.enable_listen_video')"
       :desc="t('settings.enable_listen_video_desc')"
+      data-settings-key="settings.enable_listen_video"
       right-width="auto"
     >
       <Radio v-model="settings.enableListenVideo" />

@@ -286,18 +286,22 @@ function getSearchEntryText(entry: SettingsSearchEntry) {
   ].join(' ').toLocaleLowerCase()
 }
 
+// 搜索文本只随 locale/目录变化重算，输入时复用，避免每次击键重复翻译全部条目。
+const searchIndex = computed(() => settingsSearchEntries.map(entry => ({
+  entry,
+  text: getSearchEntryText(entry),
+})))
+
 const searchResults = computed(() => {
   const query = searchQuery.value.trim().toLocaleLowerCase()
   if (!query)
     return []
 
   const queryParts = query.split(/\s+/).filter(Boolean)
-  return settingsSearchEntries
-    .filter((entry) => {
-      const searchableText = getSearchEntryText(entry)
-      return queryParts.every(part => searchableText.includes(part))
-    })
+  return searchIndex.value
+    .filter(({ text }) => queryParts.every(part => text.includes(part)))
     .slice(0, 12)
+    .map(({ entry }) => entry)
 })
 
 const activeSearchResultIndex = ref(-1)
@@ -420,7 +424,14 @@ function scrollToSearchTarget(
     : null
   // 条件渲染的目标可能不存在；给它两轮挂载时间后落到始终可见的父项。
   const fallbackTarget = fallbackTargetKey && attempts >= 2 ? queryByKey(fallbackTargetKey) : null
-  const target = keyedTarget ?? titleTarget ?? fallbackTarget
+  // 未配置父项的条件设置，兜底到当前页面首个可见标题，至少把用户带到正确页面。
+  const pageTarget = attempts >= 10
+    ? Array.from(viewport.querySelectorAll<HTMLElement>('[data-settings-title]'))
+        .find(element => element.getClientRects().length > 0)
+    : null
+  const target = keyedTarget ?? titleTarget ?? fallbackTarget ?? pageTarget
+  if (pageTarget && target === pageTarget && __DEV__)
+    console.warn('[settings-search] 精确目标未找到，回退到页面标题', { targetKey, expectedTitle, fallbackTargetKey })
   if (!target) {
     retry()
     return
