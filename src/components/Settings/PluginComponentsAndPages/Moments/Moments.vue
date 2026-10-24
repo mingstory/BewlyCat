@@ -105,6 +105,7 @@ const momentsTabsPositionOptions = computed<{ label: string, value: TabsPosition
               v-model="settings[option.setting]"
               :label="t(option.labelKey)"
               :icon="option.icon"
+              :data-settings-key="option.labelKey"
             />
           </div>
         </template>
@@ -207,6 +208,7 @@ const momentsTabsPositionOptions = computed<{ label: string, value: TabsPosition
               v-model="settings[option.setting]"
               :label="t(option.labelKey)"
               :icon="option.icon"
+              :data-settings-key="option.labelKey"
             />
           </div>
         </template>

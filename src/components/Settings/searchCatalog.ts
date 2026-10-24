@@ -43,6 +43,7 @@ export interface SettingsSearchEntry {
   targetTitle?: string
   fallbackTargetKey?: string
   secondaryTitleKey?: string
+  contextTitleKey?: string
   storageValues?: SettingsSearchStorageValue[]
   keywordKeys?: string[]
   keywords?: string[]
@@ -91,6 +92,7 @@ interface CreateEntriesOptions extends Omit<SettingsSearchEntry, 'titleKey' | 'm
   storageValues?: SettingsSearchStorageValue[]
   keywordKeysByTitleKey?: Record<string, string[]>
   fallbackTargetKeysByTitleKey?: Record<string, string>
+  contextTitleKeysByTitleKey?: Record<string, string>
 }
 
 function createEntries(
@@ -98,7 +100,7 @@ function createEntries(
   titleKeys: string[],
   options: CreateEntriesOptions = {},
 ): SettingsSearchEntry[] {
-  const { fallbackTargetKeysByTitleKey, keywordKeysByTitleKey, ...entryOptions } = options
+  const { fallbackTargetKeysByTitleKey, keywordKeysByTitleKey, contextTitleKeysByTitleKey, ...entryOptions } = options
   const routeStorageValues = route.secondaryPage && route.storageKey
     ? [{ key: route.storageKey, value: route.secondaryPage }]
     : []
@@ -108,6 +110,7 @@ function createEntries(
   for (const key of [
     ...Object.keys(keywordKeysByTitleKey ?? {}),
     ...Object.keys(fallbackTargetKeysByTitleKey ?? {}),
+    ...Object.keys(contextTitleKeysByTitleKey ?? {}),
   ]) {
     if (!filteredTitleKeySet.has(key))
       throw new Error(`Unknown search entry key: ${key}`)
@@ -119,6 +122,7 @@ function createEntries(
       ...(keywordKeysByTitleKey?.[titleKey] ?? []),
     ]
     const fallbackTargetKey = fallbackTargetKeysByTitleKey?.[titleKey]
+    const contextTitleKey = contextTitleKeysByTitleKey?.[titleKey]
 
     return {
       titleKey,
@@ -127,6 +131,7 @@ function createEntries(
       ...entryOptions,
       ...(keywordKeys.length ? { keywordKeys } : {}),
       ...(fallbackTargetKey ? { fallbackTargetKey } : {}),
+      ...(contextTitleKey ? { contextTitleKey } : {}),
       storageValues: [...routeStorageValues, ...(entryOptions.storageValues ?? [])],
     }
   })
@@ -352,6 +357,12 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
       'settings.video_preview_swipe_seek': 'settings.moments_enable_video_preview',
       'settings.hover_video_card_delayed': 'settings.moments_enable_video_preview',
       'settings.only_cover_video_preview': 'settings.moments_enable_video_preview',
+    },
+    contextTitleKeysByTitleKey: {
+      'settings.original_moments_show_user_card': 'settings.group_original_moments_page',
+      'settings.original_moments_show_hot_search': 'settings.group_original_moments_page',
+      'settings.moments_show_user_card': 'settings.group_new_moments_page',
+      'settings.moments_show_hot_search': 'settings.group_new_moments_page',
     },
   }),
   ...createEntries(momentsRoute, [

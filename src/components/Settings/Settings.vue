@@ -252,9 +252,11 @@ function getSearchEntryTitle(entry: SettingsSearchEntry) {
 
 function getSearchEntryLocation(entry: SettingsSearchEntry) {
   const primaryTitle = getMenuTitle(entry.menu)
-  return entry.secondaryTitleKey
-    ? `${primaryTitle} / ${t(entry.secondaryTitleKey)}`
-    : primaryTitle
+  return [
+    primaryTitle,
+    entry.secondaryTitleKey ? t(entry.secondaryTitleKey) : '',
+    entry.contextTitleKey ? t(entry.contextTitleKey) : '',
+  ].filter(Boolean).join(' / ')
 }
 
 function getTranslatedSearchTerms(key: string): string[] {
