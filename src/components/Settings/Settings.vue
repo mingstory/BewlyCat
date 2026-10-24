@@ -393,6 +393,8 @@ function getMenuTitle(menu: MenuType) {
 let highlightedSearchTarget: HTMLElement | undefined
 let searchTargetHighlightTimer: number | undefined
 let searchTargetResizeObserver: ResizeObserver | undefined
+let searchTargetObservationTimer: number | undefined
+let searchTargetScrollEndCleanup: (() => void) | undefined
 let searchNavigationId = 0
 let searchTargetRetryTimer: number | undefined
 let searchTargetFrame: number | undefined
@@ -412,6 +414,7 @@ function clearSearchTargetHighlight() {
   if (searchTargetHighlightTimer)
     window.clearTimeout(searchTargetHighlightTimer)
 
+  cancelSearchTargetObservation()
   searchTargetResizeObserver?.disconnect()
   searchTargetResizeObserver = undefined
   highlightedSearchTarget?.classList.remove('settings-search-target')
@@ -464,6 +467,37 @@ function observeSearchTargetLayout(target: HTMLElement, viewport: HTMLElement, n
       viewport.scrollTo({ top: getSearchTargetScrollTop(target, viewport), behavior: 'auto' })
   })
   searchTargetResizeObserver.observe(content)
+}
+
+function cancelSearchTargetObservation() {
+  searchTargetScrollEndCleanup?.()
+  searchTargetScrollEndCleanup = undefined
+  if (searchTargetObservationTimer !== undefined) {
+    window.clearTimeout(searchTargetObservationTimer)
+    searchTargetObservationTimer = undefined
+  }
+}
+
+function scheduleSearchTargetObservation(target: HTMLElement, viewport: HTMLElement, navigationId: number) {
+  cancelSearchTargetObservation()
+  let started = false
+
+  const start = () => {
+    if (started)
+      return
+    started = true
+    cancelSearchTargetObservation()
+    if (navigationId === searchNavigationId)
+      observeSearchTargetLayout(target, viewport, navigationId)
+  }
+
+  // 首帧的 ResizeObserver 回调会把尚未完成的平滑滚动画成瞬时跳转，
+  // 因此等滚动结束（或无需滚动时的兜底超时）后再开始观察布局变化。
+  viewport.addEventListener('scrollend', start, { once: true })
+  searchTargetObservationTimer = window.setTimeout(start, 1200)
+  searchTargetScrollEndCleanup = () => {
+    viewport.removeEventListener('scrollend', start)
+  }
 }
 
 function scrollToSearchTarget(
@@ -560,7 +594,7 @@ function scrollToSearchTarget(
       // 页面级兜底只负责把用户带到正确页面，避免把“已定位”标注到无关设置上。
       if (!usedPageFallback) {
         highlightSearchTarget(target)
-        observeSearchTargetLayout(target, viewport, navigationId)
+        scheduleSearchTargetObservation(target, viewport, navigationId)
       }
     })
   })
