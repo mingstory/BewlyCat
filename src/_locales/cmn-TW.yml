@@ -279,6 +279,8 @@ settings:
   group_player_components: 播放器組件
   group_player_display_mode: 播放模式
   group_player_display_mode_desc: 設定基礎顯示模式，並依需要覆寫特定播放情境。
+  group_bewly_widescreen: Bewly 寬螢幕
+  group_bewly_widescreen_desc: 調整 Bewly 寬螢幕模式下的側欄與影片版面，可透過播放器按鈕或快捷鍵隨時切換。
   group_playback_memory: 播放狀態記憶
   group_playback_memory_desc: 選擇是否記住倍速、畫質和影片比例。
   group_video_page_actions: 影片頁功能
@@ -370,6 +372,8 @@ settings:
   moments_enable_video_preview_desc: 滑鼠懸停影片動態或轉發影片時播放預覽，可設定觸發範圍、延遲和播放互動。
   moments_grid_columns: 動態欄數
   moments_tabs_position: 動態標籤列位置
+  moments_start_from_last_seen: 從上次看到的位置開始載入
+  moments_start_from_last_seen_desc: 開啟外掛動態頁和頂欄動態下拉時直接定位到上次看到的位置，可向上繼續載入更新的動態。關閉後從最新開始載入，仍可點擊按鈕跳轉到上次看到的位置。
   moments_grid_columns_desc: 設定 Bewly 動態頁的欄數，視窗空間不足時會自動減少。
   moments_grid_columns_option: '{count} 欄'
   moments_grid_columns_more: 更多
@@ -713,7 +717,7 @@ settings:
   show_recommendation_mode_switcher: 顯示推薦模式快速切換按鈕組
   show_recommendation_mode_switcher_desc: 選取首頁「為你推薦」時，在頂部分頁列右側顯示膠囊按鈕組，可直接選擇 Web、Web 訪客、App 單列或 App 雙列。
   recommendation_mode_switcher_options: 顯示的推薦模式
-  recommendation_mode_switcher_options_desc: 選擇快速切換按鈕組中顯示的選項，至少保留 2 個。
+  recommendation_mode_switcher_options_desc: 選擇快速切換按鈕組中顯示的選項，拖動可調整順序；至少保留 2 個。
   show_immersive_mode_entry: 啟用沉浸式模式
   show_immersive_mode_entry_desc: 選取首頁「為你推薦」時，在頂部分頁列右側顯示入口：以 Bewly 寬螢幕開啟 B 站影片頁連續播放推薦影片，側欄顯示首頁推薦流。
   immersive_wheel_switch: 滾輪切換影片
@@ -1334,6 +1338,8 @@ topbar:
     uploaded: 上傳了：
     now_streaming: 正在直播：
     live_status: 直播中
+    last_seen: 上次看到這裡
+    jump_to_last_seen: 跳到上次看到的位置
   upload_dropdown:
     article: 上傳文章
     music: 上傳音訊
@@ -1682,6 +1688,10 @@ moments:
   filter_video: 影片投稿
   filter_pgc: 追番追劇
   filter_article: 專欄
+  last_seen: 上次看到這裡
+  newer_above: 上方還有更新的動態
+  jump_to_latest: 回到最新
+  jump_to_last_seen: 跳到上次看到的位置
   emoji: 表情
   view: 查看
   charged_unlock: 充電解鎖

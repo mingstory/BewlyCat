@@ -279,6 +279,8 @@ settings:
   group_player_components: Player Components
   group_player_display_mode: Display Mode
   group_player_display_mode_desc: Set a base display mode and override it for specific playback contexts when needed.
+  group_bewly_widescreen: Bewly Widescreen
+  group_bewly_widescreen_desc: Adjust the sidebar and video layout in Bewly Widescreen. Toggle it anytime with the player button or shortcut.
   group_playback_memory: Playback Memory
   group_playback_memory_desc: Choose whether to remember playback rate, video quality, and video aspect ratio.
   group_video_page_actions: Video Page Features
@@ -374,6 +376,8 @@ settings:
   moments_enable_video_preview_desc: Preview video dynamics and forwarded videos on hover, with configurable trigger area, delay, and playback interactions.
   moments_grid_columns: Dynamic columns
   moments_tabs_position: Dynamic tabs position
+  moments_start_from_last_seen: Start from where you left off
+  moments_start_from_last_seen_desc: Open the plugin moments page and the top bar moments dropdown at the last post you saw, then scroll up to load newer posts. When off, loading starts from the latest and a button still lets you jump to where you left off.
   moments_grid_columns_desc: Set the column count for the Bewly dynamic feed. Columns reduce automatically when space is limited.
   moments_grid_columns_option: '{count} columns'
   moments_grid_columns_more: More
@@ -788,7 +792,7 @@ settings:
   show_recommendation_mode_switcher: Show quick recommendation mode switcher
   show_recommendation_mode_switcher_desc: When "For You" is selected, show a segmented control to the right of the home tabs to choose Web, Web Guest, App Single, or App Double directly.
   recommendation_mode_switcher_options: Visible recommendation modes
-  recommendation_mode_switcher_options_desc: Choose which options appear in the quick switcher. At least 2 must stay visible.
+  recommendation_mode_switcher_options_desc: Choose which options appear in the quick switcher and drag them to reorder. At least 2 must stay visible.
   show_immersive_mode_entry: Enable immersive mode
   show_immersive_mode_entry_desc: When "For You" is selected, show an entry to the right of the home tabs that plays recommendations continuously on the Bilibili video page in Bewly widescreen, with the home feed in the sidebar.
   immersive_wheel_switch: Switch videos with the mouse wheel
@@ -1400,6 +1404,8 @@ topbar:
     uploaded: 'uploaded: '
     now_streaming: 'now streaming: '
     live_status: LIVE
+    last_seen: Last seen here
+    jump_to_last_seen: Jump to where you left off
   upload_dropdown:
     article: Article
     music: Music
@@ -1755,6 +1761,10 @@ moments:
   filter_video: Videos
   filter_pgc: Anime & shows
   filter_article: Articles
+  last_seen: Last seen here
+  newer_above: Newer posts above
+  jump_to_latest: Back to latest
+  jump_to_last_seen: Jump to where you left off
   emoji: Emoji
   view: View
   charged_unlock: Unlock with charging
