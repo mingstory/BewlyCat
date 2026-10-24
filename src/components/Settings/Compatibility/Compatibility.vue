@@ -43,7 +43,12 @@ watch(() => settings.value.useOriginalBilibiliHomepage, () => {
     </SettingsItemGroup>
 
     <SettingsItemGroup :title="$t('settings.group_clean_share_link')">
-      <SettingsItem :title="$t('settings.enable_clean_share_link')" :desc="$t('settings.enable_clean_share_link_desc')" right-width="auto">
+      <SettingsItem
+        :title="$t('settings.enable_clean_share_link')"
+        :desc="$t('settings.enable_clean_share_link_desc')"
+        data-settings-key="settings.enable_clean_share_link"
+        right-width="auto"
+      >
         <Radio v-model="settings.enableCleanShareLink" />
       </SettingsItem>
       <template v-if="settings.enableCleanShareLink">

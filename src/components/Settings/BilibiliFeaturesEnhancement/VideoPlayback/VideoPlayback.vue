@@ -162,6 +162,7 @@ const playerDefaultStateOptions = computed<{ label: string, value: PlayerDefault
       <SettingsItem
         :title="t('settings.video_player_scroll')"
         :desc="t('settings.video_player_scroll_desc')"
+        data-settings-key="settings.video_player_scroll"
         right-width="auto"
       >
         <Radio v-model="settings.videoPlayerScroll" />
@@ -186,6 +187,7 @@ const playerDefaultStateOptions = computed<{ label: string, value: PlayerDefault
       <SettingsItem
         :title="t('settings.video_player_mode.enable_overrides')"
         :desc="t('settings.video_player_mode.enable_overrides_desc')"
+        data-settings-key="settings.video_player_mode.enable_overrides"
         right-width="auto"
       >
         <Radio v-model="settings.enableVideoPlayerModeOverrides" />

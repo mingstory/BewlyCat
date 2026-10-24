@@ -98,7 +98,11 @@ function updateDockItemPageMode(dockItem: DockItem, useOriginalBiliPage: boolean
       <SettingsItem :title="$t('settings.always_use_dock')" :desc="$t('settings.always_use_dock_desc')" right-width="auto">
         <Radio v-model="settings.alwaysUseDock" />
       </SettingsItem>
-      <SettingsItem :title="$t('settings.auto_hide_dock')" right-width="auto">
+      <SettingsItem
+        :title="$t('settings.auto_hide_dock')"
+        data-settings-key="settings.auto_hide_dock"
+        right-width="auto"
+      >
         <Radio v-model="settings.autoHideDock" />
       </SettingsItem>
       <SettingsItem

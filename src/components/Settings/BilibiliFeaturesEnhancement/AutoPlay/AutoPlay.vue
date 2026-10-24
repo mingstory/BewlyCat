@@ -93,6 +93,7 @@ const randomPlayActivationModeOptions = computed(() => {
       <SettingsItem
         :title="t('settings.use_bilibili_default_auto_play')"
         :desc="t('settings.use_bilibili_default_auto_play_desc')"
+        data-settings-key="settings.use_bilibili_default_auto_play"
         right-width="auto"
       >
         <Radio v-model="settings.useBilibiliDefaultAutoPlay" />
@@ -164,6 +165,7 @@ const randomPlayActivationModeOptions = computed(() => {
       <SettingsItem
         :title="t('settings.enable_random_play')"
         :desc="t('settings.enable_random_play_desc')"
+        data-settings-key="settings.enable_random_play"
         right-width="auto"
       >
         <Radio v-model="settings.enableRandomPlay" />

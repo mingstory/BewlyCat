@@ -158,6 +158,7 @@ function changeWallpaper(url: string) {
       <SettingsItem
         :title="$t('settings.enable_frosted_glass')"
         :badge="$t('settings.badge_performance_impact')"
+        data-settings-key="settings.enable_frosted_glass"
         right-width="auto"
       >
         <template #desc>
@@ -207,6 +208,7 @@ function changeWallpaper(url: string) {
       <SettingsItem
         :title="$t('settings.disable_background')"
         :desc="$t('settings.disable_background_desc')"
+        data-settings-key="settings.disable_background"
         right-width="auto"
       >
         <Radio v-model="settings.disableBackground" />
@@ -214,7 +216,7 @@ function changeWallpaper(url: string) {
     </SettingsItemGroup>
 
     <SettingsItemGroup :title="$t('settings.group_color')">
-      <SettingsItem :title="$t('settings.theme')" right-width="auto">
+      <SettingsItem :title="$t('settings.theme')" data-settings-key="settings.theme" right-width="auto">
         <Select v-model="settings.theme" w="160px" :options="themeOptions" />
       </SettingsItem>
       <SettingsItem

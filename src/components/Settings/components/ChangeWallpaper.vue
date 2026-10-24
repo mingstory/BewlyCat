@@ -171,7 +171,12 @@ onMounted(() => {
 
 <template>
   <SettingsItemGroup :title="$t('settings.group_wallpaper')">
-    <SettingsItem v-if="!isGlobal" :title="$t('settings.individually_set_search_page_wallpaper')" right-width="auto">
+    <SettingsItem
+      v-if="!isGlobal"
+      :title="$t('settings.individually_set_search_page_wallpaper')"
+      data-settings-key="settings.individually_set_search_page_wallpaper"
+      right-width="auto"
+    >
       <template #desc>
         <span class="bew-warning-text">{{ $t('common.performance_impact_warn') }}</span>
       </template>
@@ -180,7 +185,12 @@ onMounted(() => {
     </SettingsItem>
 
     <template v-if="isGlobal || (settings.individuallySetSearchPageWallpaper && !isGlobal)">
-      <SettingsItem :title="$t('settings.wallpaper_mode')" :desc="$t('settings.wallpaper_mode_desc')" right-width="auto">
+      <SettingsItem
+        :title="$t('settings.wallpaper_mode')"
+        :desc="$t('settings.wallpaper_mode_desc')"
+        data-settings-key="settings.wallpaper_mode"
+        right-width="auto"
+      >
         <SettingsSegmentedControl
           v-model="wallpaperMode"
           :label="$t('settings.wallpaper_mode')"
@@ -339,7 +349,11 @@ onMounted(() => {
         </template>
       </SettingsItem>
 
-      <SettingsItem :title="$t('settings.enable_wallpaper_masking')" right-width="auto">
+      <SettingsItem
+        :title="$t('settings.enable_wallpaper_masking')"
+        data-settings-key="settings.enable_wallpaper_masking"
+        right-width="auto"
+      >
         <template #desc>
           <span class="bew-warning-text">{{ $t('common.performance_impact_warn') }}</span>
         </template>

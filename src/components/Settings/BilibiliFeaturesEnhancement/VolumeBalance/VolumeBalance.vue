@@ -13,7 +13,12 @@ const { t } = useI18n()
 
 <template>
   <SettingsItemGroup :title="t('settings.local_loudness.title')">
-    <SettingsItem :title="t('settings.local_loudness.enable')" :desc="t('settings.local_loudness.description')" right-width="auto">
+    <SettingsItem
+      :title="t('settings.local_loudness.enable')"
+      :desc="t('settings.local_loudness.description')"
+      data-settings-key="settings.local_loudness.enable"
+      right-width="auto"
+    >
       <Radio v-model="settings.localLoudnessEnabled" />
     </SettingsItem>
     <template v-if="settings.localLoudnessEnabled">
