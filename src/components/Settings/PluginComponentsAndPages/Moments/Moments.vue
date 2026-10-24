@@ -95,6 +95,7 @@ const momentsTabsPositionOptions = computed<{ label: string, value: TabsPosition
       <SettingsItem
         :title="$t('settings.moments_visible_components')"
         :desc="$t('settings.moments_visible_components_plugin_desc')"
+        data-settings-key="settings.moments_visible_components"
       >
         <template #bottom>
           <div class="moment-setting-tags" role="group" :aria-label="$t('settings.moments_visible_components')">
@@ -194,11 +195,12 @@ const momentsTabsPositionOptions = computed<{ label: string, value: TabsPosition
 
     <SettingsItemGroup :title="$t('settings.group_original_moments_page')">
       <SettingsItem
-        :title="$t('settings.moments_visible_components')"
+        :title="$t('settings.moments_visible_components_bilibili_page')"
         :desc="$t('settings.moments_visible_components_original_desc')"
+        data-settings-key="settings.moments_visible_components_bilibili_page"
       >
         <template #bottom>
-          <div class="moment-setting-tags" role="group" :aria-label="$t('settings.moments_visible_components')">
+          <div class="moment-setting-tags" role="group" :aria-label="$t('settings.moments_visible_components_bilibili_page')">
             <SettingsToggleTag
               v-for="option in originalComponentOptions"
               :key="option.setting"

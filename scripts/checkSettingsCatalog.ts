@@ -142,6 +142,19 @@ function collectTemplateKeys(file: string): { titles: StaticKey[], dataKeys: Sta
   return { titles, dataKeys }
 }
 
+// 脚本里通过 v-for/数组生成的标题（如 toggle tag、选项标签）无法从模板字面量收集，
+// 用源码中出现的字符串作为“页面确实引用了该 key”的保守证据。
+const sourceKeyPattern = /['"]([a-z][\w-]*(?:\.[\w-]+)+)['"]/g
+
+function collectSourceKeys(file: string) {
+  const keys = new Set<string>()
+  for (const match of readFileSync(file, 'utf8').matchAll(sourceKeyPattern))
+    keys.add(match[1])
+  return keys
+}
+
+// 仅支持当前 locale 使用的简单 YAML 子集（2 空格缩进、标量叶子、块标量）；
+// 引号 key、序列、锚点等写法会直接报错，避免静默误读。
 function parseLocaleKeys(file: string): LocaleKeys {
   const keys = new Set<string>()
   const objectKeys = new Set<string>()
@@ -225,6 +238,13 @@ function validateEntries(locales: LocaleKeys[]) {
         errors.push(`${displayPath(searchCatalogFile)}:${catalogLine(key)} 条目 key "${key}" 在 locale 中缺失或不是字符串叶子`)
     }
 
+    if (entry.titleKey?.endsWith('_desc')) {
+      errors.push(`${displayPath(searchCatalogFile)}:${catalogLine(entry.titleKey)} 描述 key "${entry.titleKey}" 不应作为独立搜索条目；父项会自动把 "_desc" 作为关键词`)
+    }
+    if (entry.titleKey && /_opt\./.test(entry.titleKey)) {
+      errors.push(`${displayPath(searchCatalogFile)}:${catalogLine(entry.titleKey)} 选项 key "${entry.titleKey}" 不应作为独立搜索条目；请挂到父项的 keywordKeys`)
+    }
+
     for (const key of entry.keywordKeys ?? []) {
       if (!localeHasKey(locales, key))
         errors.push(`${displayPath(searchCatalogFile)}:${catalogLine(key)} keywordKey "${key}" 在 locale 中缺失`)
@@ -257,12 +277,29 @@ function validateStaticKeys(locales: LocaleKeys[], targets: Set<string>) {
   const titles: StaticKey[] = []
   const dataKeys: StaticKey[] = []
   const usedAllowlistKeys = new Set<string>()
+  const locatableKeys = new Set<string>()
+  const files = collectVueFiles(settingsDirectory)
 
-  for (const file of collectVueFiles(settingsDirectory)) {
+  for (const file of files) {
     const collected = collectTemplateKeys(file)
     titles.push(...collected.titles)
     dataKeys.push(...collected.dataKeys)
+    for (const key of collectSourceKeys(file))
+      locatableKeys.add(key)
   }
+
+  for (const title of titles)
+    locatableKeys.add(title.key)
+  for (const dataKey of dataKeys)
+    locatableKeys.add(dataKey.key)
+  for (const group of configurableShortcutsGroups) {
+    for (const shortcut of group.shortcuts)
+      locatableKeys.add(shortcut.nameKey)
+  }
+  for (const option of [...originalComponentOptions, ...pluginComponentOptions, ...pluginFilterOptions])
+    locatableKeys.add(option.labelKey)
+  for (const component of topBarComponentDefinitions)
+    locatableKeys.add(component.i18nKey)
 
   for (const title of titles) {
     if (targets.has(title.key))
@@ -274,17 +311,31 @@ function validateStaticKeys(locales: LocaleKeys[], targets: Set<string>) {
     errors.push(`${title.file}:${title.line} 标题 key "${title.key}" 未出现在任何搜索条目中；请新增条目或加入 allowlist`)
   }
 
+  const dataKeyLocations = new Map<string, StaticKey[]>()
   for (const dataKey of dataKeys) {
+    dataKeyLocations.set(dataKey.key, [...(dataKeyLocations.get(dataKey.key) ?? []), dataKey])
     if (!localeHasStringLeaf(locales, dataKey.key))
       errors.push(`${dataKey.file}:${dataKey.line} data-settings-key "${dataKey.key}" 在 locale 中缺失或不是字符串叶子`)
     if (!targets.has(dataKey.key))
       errors.push(`${dataKey.file}:${dataKey.line} data-settings-key "${dataKey.key}" 未对应任何搜索条目的 titleKey/targetTitleKey`)
   }
+  for (const [key, locations] of dataKeyLocations) {
+    if (locations.length > 1) {
+      errors.push(`data-settings-key "${key}" 重复：${locations.map(location => `${location.file}:${location.line}`).join('、')}`)
+    }
+  }
 
   const dataKeySet = new Set(dataKeys.map(dataKey => dataKey.key))
   for (const entry of settingsSearchEntries) {
+    const entryName = entry.titleKey ?? entry.title ?? ''
     if (entry.fallbackTargetKey && !dataKeySet.has(entry.fallbackTargetKey))
-      errors.push(`条目 "${entry.titleKey ?? entry.title ?? ''}" 的 fallbackTargetKey "${entry.fallbackTargetKey}" 没有对应的 data-settings-key`)
+      errors.push(`条目 "${entryName}" 的 fallbackTargetKey "${entry.fallbackTargetKey}" 没有对应的 data-settings-key`)
+
+    const locatorKey = entry.targetTitleKey ?? entry.titleKey
+    if (locatorKey && !locatableKeys.has(locatorKey)
+      && !(entry.fallbackTargetKey && locatableKeys.has(entry.fallbackTargetKey))) {
+      errors.push(`条目 "${entryName}" 的定位 key "${locatorKey}" 在设置页中找不到对应标题、data-settings-key 或动态标签`)
+    }
   }
 
   for (const key of Object.keys(SETTINGS_CATALOG_ALLOWLIST)) {

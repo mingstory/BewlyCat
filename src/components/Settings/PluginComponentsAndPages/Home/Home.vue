@@ -187,7 +187,11 @@ function handleToggleHomeTab(tab: Settings['homePageTabVisibilityList'][number],
 <template>
   <div>
     <SettingsItemGroup :title="$t('settings.group_recommendation_mode')">
-      <SettingsItem :title="$t('settings.recommendation_mode')" right-width="auto">
+      <SettingsItem
+        :title="$t('settings.recommendation_mode')"
+        data-settings-key="settings.recommendation_mode"
+        right-width="auto"
+      >
         <template #desc>
           <p>{{ $t('settings.recommendation_mode_desc') }}</p>
         </template>
@@ -283,6 +287,7 @@ function handleToggleHomeTab(tab: Settings['homePageTabVisibilityList'][number],
       <SettingsItem
         :title="$t('settings.show_immersive_mode_entry')"
         :desc="$t('settings.show_immersive_mode_entry_desc')"
+        data-settings-key="settings.show_immersive_mode_entry"
         right-width="auto"
       >
         <Radio v-model="settings.showImmersiveModeEntry" />

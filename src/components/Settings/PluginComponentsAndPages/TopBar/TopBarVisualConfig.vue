@@ -118,6 +118,7 @@ watch(topBarComponents, ensureTopBarComponentsConfig, { immediate: true })
       <SettingsItem
         :title="$t('settings.top_bar_style')"
         :desc="$t('settings.top_bar_style_desc')"
+        data-settings-key="settings.top_bar_style"
         right-width="auto"
       >
         <Select v-model="settings.topBarStyle" :options="topBarStyleOptions" w="220px" />

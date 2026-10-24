@@ -80,7 +80,7 @@ const nonSettingTitleKeyPatterns = [
   /^settings\.bilibili_features\./,
   /^settings\.shortcuts\.group\./,
   /^settings\.maintenance\.(title|backup_title|reset_title)$/,
-  /^settings\.topbar_(display_settings|logo_and_channels|switchers|actions|user_menu)$/,
+  /^settings\.topbar_(display_settings|style_settings|logo_and_channels|switchers|actions|user_menu)$/,
 ]
 
 export function isSettingTitleKey(titleKey: string) {
@@ -102,8 +102,18 @@ function createEntries(
   const routeStorageValues = route.secondaryPage && route.storageKey
     ? [{ key: route.storageKey, value: route.secondaryPage }]
     : []
+  const filteredTitleKeys = titleKeys.filter(isSettingTitleKey)
+  const filteredTitleKeySet = new Set(filteredTitleKeys)
 
-  return titleKeys.filter(isSettingTitleKey).map((titleKey) => {
+  for (const key of [
+    ...Object.keys(keywordKeysByTitleKey ?? {}),
+    ...Object.keys(fallbackTargetKeysByTitleKey ?? {}),
+  ]) {
+    if (!filteredTitleKeySet.has(key))
+      throw new Error(`Unknown search entry key: ${key}`)
+  }
+
+  return filteredTitleKeys.map((titleKey) => {
     const keywordKeys = [
       ...(entryOptions.keywordKeys ?? []),
       ...(keywordKeysByTitleKey?.[titleKey] ?? []),
@@ -182,27 +192,25 @@ const autoPlayModeOptionKeys = [
 const topBarGlobalTitleKeys = [
   'settings.group_topbar',
   'settings.topbar_display_settings',
-  'settings.topbar_style_settings',
   'settings.topbar_visibility',
-  'settings.topbar_visibility_desc',
   'settings.other_page_top_bar_config',
   'settings.video_page_top_bar_config',
   'settings.top_bar_style',
-  'settings.top_bar_style_desc',
+  'settings.show_top_bar_theme_color_gradient',
+  'settings.open_top_bar_items_in_bewly',
+  'settings.open_notifications_page_as_drawer',
+  'settings.notification_badge_types',
+  'settings.notification_followed_private_messages',
+  'settings.notification_unfollowed_private_messages',
+  'settings.filter_articles_in_moments',
+]
+const topBarStyleOptionKeys = [
   'settings.top_bar_style_opt.default',
   'settings.top_bar_style_opt.frosted_glass',
   'settings.top_bar_style_opt.transparent',
   'settings.top_bar_style_opt.exp_default',
   'settings.top_bar_style_opt.exp_frosted_glass',
   'settings.top_bar_style_opt.exp_transparent',
-  'settings.show_top_bar_theme_color_gradient',
-  'settings.open_top_bar_items_in_bewly',
-  'settings.open_notifications_page_as_drawer',
-  'settings.notification_badge_types',
-  'settings.notification_badge_types_desc',
-  'settings.notification_followed_private_messages',
-  'settings.notification_unfollowed_private_messages',
-  'settings.filter_articles_in_moments',
 ]
 
 export const settingsSearchEntries: SettingsSearchEntry[] = [
@@ -277,6 +285,13 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
   ], {
     fallbackTargetKeysByTitleKey: {
       'settings.recommendation_mode_switcher_options': 'settings.show_recommendation_mode_switcher',
+      'settings.remember_no_cookie_recommendation_state': 'settings.recommendation_mode',
+      'settings.authorize_app': 'settings.recommendation_mode',
+      'settings.immersive_wheel_switch': 'settings.show_immersive_mode_entry',
+      'settings.immersive_keyboard_switch': 'settings.show_immersive_mode_entry',
+      'settings.immersive_auto_play': 'settings.show_immersive_mode_entry',
+      'settings.immersive_auto_next': 'settings.show_immersive_mode_entry',
+      'settings.immersive_preload_next': 'settings.show_immersive_mode_entry',
       'settings.settings_shared_with_the_search_page': 'settings.use_search_page_mode',
       'settings.search_page_mode_wallpaper_fixed': 'settings.use_search_page_mode',
     },
@@ -295,6 +310,7 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
   ...createEntries(momentsRoute, [
     'settings.plugin.moments',
     'settings.group_original_moments_page',
+    'settings.moments_visible_components_bilibili_page',
     ...getMomentOptionTitleKeys(originalComponentOptions),
     'settings.group_new_moments_page',
     'settings.moments_visible_components',
@@ -362,9 +378,7 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
     'settings.enable_video_preview',
     'settings.enable_video_ctrl_bar_on_video_card',
     'settings.video_preview_swipe_seek',
-    'settings.video_preview_swipe_seek_desc',
     'settings.resume_from_video_preview',
-    'settings.resume_from_video_preview_desc',
     'settings.hover_video_card_delayed',
     'settings.only_cover_video_preview',
     'settings.group_video_card_content',
@@ -410,9 +424,7 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
       'settings.video_card_shadow_height': 'settings.video_card_layout',
       'settings.enable_video_ctrl_bar_on_video_card': 'settings.enable_video_preview',
       'settings.video_preview_swipe_seek': 'settings.enable_video_preview',
-      'settings.video_preview_swipe_seek_desc': 'settings.enable_video_preview',
       'settings.resume_from_video_preview': 'settings.enable_video_preview',
-      'settings.resume_from_video_preview_desc': 'settings.enable_video_preview',
       'settings.hover_video_card_delayed': 'settings.enable_video_preview',
       'settings.only_cover_video_preview': 'settings.enable_video_preview',
     },
@@ -434,6 +446,7 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
         'topbar.noti_dropdown.likes',
         'topbar.noti_dropdown.messages',
       ],
+      'settings.top_bar_style': topBarStyleOptionKeys,
     },
     fallbackTargetKeysByTitleKey: {
       'settings.open_top_bar_items_in_bewly': 'settings.topbar_visibility',
@@ -509,6 +522,9 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
         'settings.dock_item_use_original_bili_web_page',
       ],
     },
+    fallbackTargetKeysByTitleKey: {
+      'settings.always_show_dock_actions_when_auto_hide': 'settings.auto_hide_dock',
+    },
   }),
   ...createEntries(dockRoute, [
     'settings.dock_position',
@@ -538,7 +554,17 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
     'settings.search_results_pagination_mode',
     'settings.individually_set_search_page_wallpaper',
     ...wallpaperTitleKeys,
-  ]),
+  ], {
+    fallbackTargetKeysByTitleKey: {
+      'settings.wallpaper_mode': 'settings.individually_set_search_page_wallpaper',
+      'settings.wallpaper_cache_time': 'settings.individually_set_search_page_wallpaper',
+      'settings.choose_ur_wallpaper': 'settings.individually_set_search_page_wallpaper',
+      'settings.image_url': 'settings.individually_set_search_page_wallpaper',
+      'settings.enable_wallpaper_masking': 'settings.individually_set_search_page_wallpaper',
+      'settings.wallpaper_mask_opacity': 'settings.individually_set_search_page_wallpaper',
+      'settings.wallpaper_blur_intensity': 'settings.individually_set_search_page_wallpaper',
+    },
+  }),
 
   ...createEntries(volumeBalanceRoute, [
     'settings.local_loudness.title',
@@ -546,7 +572,12 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
     'settings.local_loudness.target',
     'settings.local_loudness.strength',
     'settings.local_loudness.show_button',
-  ]),
+  ], {
+    fallbackTargetKeysByTitleKey: {
+      'settings.local_loudness.target': 'settings.local_loudness.enable',
+      'settings.local_loudness.strength': 'settings.local_loudness.enable',
+    },
+  }),
   ...createEntries(ambilightRoute, [
     'settings.ambilight.title',
     'settings.ambilight.enable',
@@ -563,7 +594,13 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
       'settings.ambilight.title': ambilightOptionKeywordKeys,
     },
     fallbackTargetKeysByTitleKey: {
+      'settings.ambilight.enable_fullscreen': 'settings.ambilight.title',
       'settings.ambilight.preset': 'settings.ambilight.title',
+      'settings.ambilight.strength': 'settings.ambilight.title',
+      'settings.ambilight.spread': 'settings.ambilight.title',
+      'settings.ambilight.smoothing': 'settings.ambilight.title',
+      'settings.ambilight.blur': 'settings.ambilight.title',
+      'settings.ambilight.saturation': 'settings.ambilight.title',
       'settings.ambilight.fps': 'settings.ambilight.title',
     },
   }),
@@ -592,7 +629,11 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
     'settings.external_watch_later_button',
     'settings.show_vertical_video_zoom_button',
     'settings.show_video_screenshot_button',
-  ]),
+  ], {
+    fallbackTargetKeysByTitleKey: {
+      'settings.video_player_mode.overrides': 'settings.video_player_mode.enable_overrides',
+    },
+  }),
   ...createEntries(listenVideoRoute, [
     'settings.enable_listen_video',
     'settings.show_listen_video_button',
@@ -653,6 +694,9 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
       'settings.video_player_scroll_mode.sending_bar',
       'settings.video_player_scroll_mode.player_center',
     ],
+    fallbackTargetKeysByTitleKey: {
+      'settings.video_player_scroll_mode.title': 'settings.video_player_scroll',
+    },
   }),
   ...createEntries(playerRoute, [
     'settings.video_default_player_mode',
@@ -664,7 +708,17 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
     'settings.video_player_mode.context_watch_later',
     'settings.video_player_mode.context_playlist',
     'settings.video_player_mode.context_moments_dialog',
-  ], { keywordKeys: [...playerModeOptionKeys, 'settings.video_player_mode.inherit'] }),
+  ], {
+    keywordKeys: [...playerModeOptionKeys, 'settings.video_player_mode.inherit'],
+    fallbackTargetKeysByTitleKey: {
+      'settings.video_player_mode.context_multipart': 'settings.video_player_mode.enable_overrides',
+      'settings.video_player_mode.context_collection': 'settings.video_player_mode.enable_overrides',
+      'settings.video_player_mode.context_bangumi': 'settings.video_player_mode.enable_overrides',
+      'settings.video_player_mode.context_watch_later': 'settings.video_player_mode.enable_overrides',
+      'settings.video_player_mode.context_playlist': 'settings.video_player_mode.enable_overrides',
+      'settings.video_player_mode.context_moments_dialog': 'settings.video_player_mode.enable_overrides',
+    },
+  }),
   ...createEntries(playerRoute, [
     'settings.video_danmaku_default_state',
     'settings.video_caption_default_state',
@@ -683,7 +737,13 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
     'settings.use_bilibili_default_auto_play',
     'settings.group_video_type_end_behavior',
     'settings.group_playlist_start_behavior',
-  ]),
+  ], {
+    fallbackTargetKeysByTitleKey: {
+      'settings.enable_custom_play_order_overrides': 'settings.enable_random_play',
+      'settings.custom_play_order_overrides': 'settings.enable_random_play',
+      'settings.min_videos_for_random': 'settings.enable_random_play',
+    },
+  }),
   ...createEntries(autoPlayRoute, [
     'settings.auto_play_multipart',
     'settings.auto_play_collection',
@@ -697,10 +757,21 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
       'settings.random_play_order_reverse',
       'settings.random_play_order_random',
     ],
+    fallbackTargetKeysByTitleKey: {
+      'settings.auto_play_multipart': 'settings.use_bilibili_default_auto_play',
+      'settings.auto_play_collection': 'settings.use_bilibili_default_auto_play',
+      'settings.auto_play_watch_later': 'settings.use_bilibili_default_auto_play',
+      'settings.auto_play_playlist': 'settings.use_bilibili_default_auto_play',
+    },
   }),
   ...createEntries(autoPlayRoute, [
     'settings.auto_play_recommend',
-  ], { keywordKeys: autoPlayModeOptionKeys }),
+  ], {
+    keywordKeys: autoPlayModeOptionKeys,
+    fallbackTargetKeysByTitleKey: {
+      'settings.auto_play_recommend': 'settings.use_bilibili_default_auto_play',
+    },
+  }),
   ...createEntries(autoPlayRoute, [
     'settings.default_custom_play_order',
   ], {
@@ -709,11 +780,17 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
       'settings.random_play_order_reverse',
       'settings.random_play_order_random',
     ],
+    fallbackTargetKeysByTitleKey: {
+      'settings.default_custom_play_order': 'settings.enable_random_play',
+    },
   }),
   ...createEntries(autoPlayRoute, [
     'settings.random_play_mode',
   ], {
     keywordKeys: ['settings.random_play_mode_manual', 'settings.random_play_mode_auto'],
+    fallbackTargetKeysByTitleKey: {
+      'settings.random_play_mode': 'settings.enable_random_play',
+    },
   }),
   ...createEntries(autoPlayRoute, [
     'settings.collected_season_play_all_mode',
@@ -751,7 +828,17 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
     'settings.override_danmaku_font',
     'settings.customize_css',
     ...wallpaperTitleKeys,
-  ]),
+  ], {
+    fallbackTargetKeysByTitleKey: {
+      'settings.frosted_glass_blur_intensity': 'settings.enable_frosted_glass',
+      'settings.theme_schedule': 'settings.theme',
+      'settings.gradient_theme_color_background': 'settings.disable_background',
+      'settings.choose_ur_wallpaper': 'settings.wallpaper_mode',
+      'settings.image_url': 'settings.wallpaper_mode',
+      'settings.wallpaper_mask_opacity': 'settings.enable_wallpaper_masking',
+      'settings.wallpaper_blur_intensity': 'settings.enable_wallpaper_masking',
+    },
+  }),
 
   ...createEntries(playerRoute, [
     'settings.menu_bilibili',
@@ -791,7 +878,11 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
     'settings.show_bcoin_receive_reminder',
     'settings.auto_receive_bcoin_coupon',
     'settings.auto_receive_vip_exp',
-  ]),
+  ], {
+    fallbackTargetKeysByTitleKey: {
+      'settings.auto_receive_bcoin_coupon': 'settings.show_bcoin_receive_reminder',
+    },
+  }),
   ...createEntries(compatibilityRoute, [
     'settings.menu_compatibility',
     'settings.group_common',
@@ -805,7 +896,12 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
     'settings.enable_clean_share_link',
     'settings.clean_share_link_include_title',
     'settings.clean_share_link_remove_tracking_params',
-  ]),
+  ], {
+    fallbackTargetKeysByTitleKey: {
+      'settings.clean_share_link_include_title': 'settings.enable_clean_share_link',
+      'settings.clean_share_link_remove_tracking_params': 'settings.enable_clean_share_link',
+    },
+  }),
 
   ...createEntries(shortcutsRoute, [
     'settings.shortcuts.title',
@@ -833,5 +929,9 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
     'settings.reset_settings',
     'settings.open_source_license',
     'settings.third_party_licenses',
-  ]),
+  ], {
+    fallbackTargetKeysByTitleKey: {
+      'settings.third_party_licenses': 'settings.open_source_license',
+    },
+  }),
 ]

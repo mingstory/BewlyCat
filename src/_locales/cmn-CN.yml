@@ -363,6 +363,7 @@ settings:
   moments_show_hot_search: 显示热搜
   moments_show_up_list: 显示经常访问的 UP 主
   moments_visible_components: 显示组件
+  moments_visible_components_bilibili_page: 显示组件（Bilibili 页面）
   moments_visible_components_original_desc: 控制 Bilibili 原版动态页侧栏与横幅等组件是否显示。主题色表示显示，灰色表示隐藏。
   moments_visible_components_plugin_desc: 控制 Bewly 动态页侧栏与顶部组件是否显示。主题色表示显示，灰色表示隐藏。
   moments_filtered_types: 过滤动态
