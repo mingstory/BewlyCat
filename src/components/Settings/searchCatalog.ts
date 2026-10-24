@@ -80,7 +80,7 @@ const nonSettingTitleKeyPatterns = [
   /^settings\.bilibili_features\./,
   /^settings\.shortcuts\.group\./,
   /^settings\.maintenance\.(title|backup_title|reset_title)$/,
-  /^settings\.topbar_(display_settings|logo_and_channels|switchers|actions|user_menu)$/,
+  /^settings\.topbar_(display_settings|style_settings|logo_and_channels|switchers|actions|user_menu)$/,
 ]
 
 export function isSettingTitleKey(titleKey: string) {
@@ -192,27 +192,25 @@ const autoPlayModeOptionKeys = [
 const topBarGlobalTitleKeys = [
   'settings.group_topbar',
   'settings.topbar_display_settings',
-  'settings.topbar_style_settings',
   'settings.topbar_visibility',
-  'settings.topbar_visibility_desc',
   'settings.other_page_top_bar_config',
   'settings.video_page_top_bar_config',
   'settings.top_bar_style',
-  'settings.top_bar_style_desc',
+  'settings.show_top_bar_theme_color_gradient',
+  'settings.open_top_bar_items_in_bewly',
+  'settings.open_notifications_page_as_drawer',
+  'settings.notification_badge_types',
+  'settings.notification_followed_private_messages',
+  'settings.notification_unfollowed_private_messages',
+  'settings.filter_articles_in_moments',
+]
+const topBarStyleOptionKeys = [
   'settings.top_bar_style_opt.default',
   'settings.top_bar_style_opt.frosted_glass',
   'settings.top_bar_style_opt.transparent',
   'settings.top_bar_style_opt.exp_default',
   'settings.top_bar_style_opt.exp_frosted_glass',
   'settings.top_bar_style_opt.exp_transparent',
-  'settings.show_top_bar_theme_color_gradient',
-  'settings.open_top_bar_items_in_bewly',
-  'settings.open_notifications_page_as_drawer',
-  'settings.notification_badge_types',
-  'settings.notification_badge_types_desc',
-  'settings.notification_followed_private_messages',
-  'settings.notification_unfollowed_private_messages',
-  'settings.filter_articles_in_moments',
 ]
 
 export const settingsSearchEntries: SettingsSearchEntry[] = [
@@ -312,6 +310,7 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
   ...createEntries(momentsRoute, [
     'settings.plugin.moments',
     'settings.group_original_moments_page',
+    'settings.moments_visible_components_bilibili_page',
     ...getMomentOptionTitleKeys(originalComponentOptions),
     'settings.group_new_moments_page',
     'settings.moments_visible_components',
@@ -379,9 +378,7 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
     'settings.enable_video_preview',
     'settings.enable_video_ctrl_bar_on_video_card',
     'settings.video_preview_swipe_seek',
-    'settings.video_preview_swipe_seek_desc',
     'settings.resume_from_video_preview',
-    'settings.resume_from_video_preview_desc',
     'settings.hover_video_card_delayed',
     'settings.only_cover_video_preview',
     'settings.group_video_card_content',
@@ -427,9 +424,7 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
       'settings.video_card_shadow_height': 'settings.video_card_layout',
       'settings.enable_video_ctrl_bar_on_video_card': 'settings.enable_video_preview',
       'settings.video_preview_swipe_seek': 'settings.enable_video_preview',
-      'settings.video_preview_swipe_seek_desc': 'settings.enable_video_preview',
       'settings.resume_from_video_preview': 'settings.enable_video_preview',
-      'settings.resume_from_video_preview_desc': 'settings.enable_video_preview',
       'settings.hover_video_card_delayed': 'settings.enable_video_preview',
       'settings.only_cover_video_preview': 'settings.enable_video_preview',
     },
@@ -451,6 +446,7 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
         'topbar.noti_dropdown.likes',
         'topbar.noti_dropdown.messages',
       ],
+      'settings.top_bar_style': topBarStyleOptionKeys,
     },
     fallbackTargetKeysByTitleKey: {
       'settings.open_top_bar_items_in_bewly': 'settings.topbar_visibility',

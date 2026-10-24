@@ -366,6 +366,7 @@ settings:
   moments_show_hot_search: Show hot search
   moments_show_up_list: Show frequently visited uploaders
   moments_visible_components: Visible components
+  moments_visible_components_bilibili_page: Visible components (Bilibili page)
   moments_visible_components_original_desc: Control whether sidebar and banner components appear on the original Bilibili moments page. Theme-colored means shown; gray means hidden.
   moments_visible_components_plugin_desc: Control whether sidebar and top components appear on the Bewly moments page. Theme-colored means shown; gray means hidden.
   moments_filtered_types: Filter dynamics

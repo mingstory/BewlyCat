@@ -391,6 +391,7 @@ settings:
   moments_show_hot_search: 顯示熱搜
   moments_show_up_list: 顯示經常去嘅 UP 主
   moments_visible_components: 顯示元件
+  moments_visible_components_bilibili_page: 顯示元件（Bilibili 頁面）
   moments_visible_components_original_desc: 控制 Bilibili 原版動態頁側欄同橫幅等元件係咪顯示。主題色代表顯示，灰色代表隱藏。
   moments_visible_components_plugin_desc: 控制 Bewly 動態頁側欄同頂部元件係咪顯示。主題色代表顯示，灰色代表隱藏。
   moments_filtered_types: 過濾動態
