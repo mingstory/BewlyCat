@@ -19,7 +19,11 @@ const settingsDirectory = resolve(root, 'src/components/Settings')
 const localesDirectory = resolve(root, 'src/_locales')
 const searchCatalogFile = resolve(settingsDirectory, 'searchCatalog.ts')
 const catalogLines = readFileSync(searchCatalogFile, 'utf8').split(/\r?\n/)
-const titleComponents = new Set(['SettingsItem', 'SettingsItemGroup', 'SettingsSectionHeading'])
+const titleComponents = new Set(['SettingsItem', 'SettingsItemGroup', 'SettingsItemSubgroup', 'SettingsSectionHeading'])
+const dynamicKeyedOptionSources: Record<string, string[]> = {
+  originalComponentOptions: originalComponentOptions.map(option => option.labelKey),
+  pluginComponentOptions: pluginComponentOptions.map(option => option.labelKey),
+}
 
 interface TemplateProp {
   type: number
@@ -48,6 +52,7 @@ interface LocaleKeys {
   file: string
   keys: Set<string>
   objectKeys: Set<string>
+  values: Map<string, string>
 }
 
 const errors: string[] = []
@@ -83,6 +88,10 @@ function getPropExpression(node: TemplateNode, name: string): string | undefined
   return prop.type === 6 ? prop.value?.content : prop.exp?.content
 }
 
+function getDirectiveExpression(node: TemplateNode, name: string): string | undefined {
+  return node.props?.find(prop => prop.type === 7 && prop.name === name)?.exp?.content
+}
+
 function getStringPropLiteral(node: TemplateNode, name: string): string | undefined {
   const prop = getProp(node, name)
   if (!prop)
@@ -107,19 +116,20 @@ function getStringLiteral(expression: string | undefined): string | undefined {
   return value.slice(1, -1)
 }
 
-function collectTemplateKeys(file: string): { titles: StaticKey[], dataKeys: StaticKey[] } {
+function collectTemplateKeys(file: string): { titles: StaticKey[], dataKeys: StaticKey[], directTitles: StaticKey[] } {
   const source = readFileSync(file, 'utf8')
   const { descriptor, errors: parseErrors } = parse(source, { filename: file })
   if (parseErrors.length) {
     errors.push(`${displayPath(file)}: SFC 解析失败：${parseErrors.map(error => error.message).join('; ')}`)
-    return { titles: [], dataKeys: [] }
+    return { titles: [], dataKeys: [], directTitles: [] }
   }
 
   const titles: StaticKey[] = []
   const dataKeys: StaticKey[] = []
+  const directTitles: StaticKey[] = []
   const rootNode = descriptor.template?.ast as unknown as TemplateNode | undefined
   if (!rootNode)
-    return { titles, dataKeys }
+    return { titles, dataKeys, directTitles }
 
   const stack = [rootNode]
   while (stack.length) {
@@ -134,12 +144,27 @@ function collectTemplateKeys(file: string): { titles: StaticKey[], dataKeys: Sta
       const dataKey = getStringPropLiteral(node, 'data-settings-key')
       if (dataKey)
         dataKeys.push({ file: displayPath(file), line, tag: node.tag, key: dataKey })
+
+      const directTitleKey = getI18nLiteral(getPropExpression(node, 'data-settings-title'))
+      if (directTitleKey && isSettingTitleKey(directTitleKey))
+        directTitles.push({ file: displayPath(file), line, tag: node.tag, key: directTitleKey })
+
+      const vFor = getDirectiveExpression(node, 'for')
+      const vForMatch = vFor?.match(/^\s*(\w+)\s+in\s+([\w.]+)\s*$/)
+      const dataKeyExpression = getPropExpression(node, 'data-settings-key')?.trim()
+      if (vForMatch && dataKeyExpression === `${vForMatch[1]}.labelKey`) {
+        const optionKeys = dynamicKeyedOptionSources[vForMatch[2]]
+        if (optionKeys) {
+          for (const optionKey of optionKeys)
+            dataKeys.push({ file: displayPath(file), line, tag: node.tag, key: optionKey })
+        }
+      }
     }
     if (node.children)
       stack.push(...node.children)
   }
 
-  return { titles, dataKeys }
+  return { titles, dataKeys, directTitles }
 }
 
 // 脚本里通过 v-for/数组生成的标题（如 toggle tag、选项标签）无法从模板字面量收集，
@@ -158,6 +183,7 @@ function collectSourceKeys(file: string) {
 function parseLocaleKeys(file: string): LocaleKeys {
   const keys = new Set<string>()
   const objectKeys = new Set<string>()
+  const values = new Map<string, string>()
   const stack: string[] = []
   let blockScalarIndent: number | undefined
 
@@ -204,17 +230,47 @@ function parseLocaleKeys(file: string): LocaleKeys {
 
     stack.length = level
     stack[level] = match[2]
-    keys.add(stack.slice(0, level + 1).join('.'))
+    const key = stack.slice(0, level + 1).join('.')
+    keys.add(key)
 
-    if (/^[|>][-+0-9]*(?:\s+#.*)?$/.test((match[3] ?? '').trim()))
+    const rawValue = (match[3] ?? '').trim()
+    if (/^[|>][-+0-9]*(?:\s+#.*)?$/.test(rawValue)) {
       blockScalarIndent = indent
+      continue
+    }
+
+    const value = parseScalarValue(rawValue)
+    if (value !== undefined)
+      values.set(key, value)
   }
 
-  return { file: displayPath(file), keys, objectKeys }
+  return { file: displayPath(file), keys, objectKeys, values }
+}
+
+function parseScalarValue(rawValue: string): string | undefined {
+  if (!rawValue)
+    return undefined
+  if (/^['"]/.test(rawValue)) {
+    const quote = rawValue[0]
+    return rawValue.length >= 2 && rawValue.at(-1) === quote
+      ? rawValue.slice(1, -1)
+      : rawValue.slice(1)
+  }
+
+  const value = rawValue.replace(/\s+#.*$/, '').trim()
+  if (!value)
+    return undefined
+  if (/^(?:null|true|false|~)$/i.test(value))
+    return undefined
+  if (/^-?(?:\d+|\d*\.\d+)(?:e[+-]?\d+)?$/i.test(value))
+    return undefined
+  if (/^[[{]/.test(value))
+    return undefined
+  return value
 }
 
 function localeHasStringLeaf(locales: LocaleKeys[], key: string) {
-  return locales.every(locale => locale.keys.has(key) && !locale.objectKeys.has(key))
+  return locales.every(locale => locale.keys.has(key) && !locale.objectKeys.has(key) && locale.values.has(key))
 }
 
 function localeHasKey(locales: LocaleKeys[], key: string) {
@@ -231,7 +287,7 @@ function validateEntries(locales: LocaleKeys[]) {
   const duplicates = new Map<string, string[]>()
 
   for (const entry of settingsSearchEntries) {
-    for (const key of [entry.titleKey, entry.targetTitleKey, entry.secondaryTitleKey]) {
+    for (const key of [entry.titleKey, entry.targetTitleKey, entry.secondaryTitleKey, entry.contextTitleKey]) {
       if (!key)
         continue
       if (!localeHasStringLeaf(locales, key))
@@ -273,33 +329,83 @@ function validateEntries(locales: LocaleKeys[]) {
   return targets
 }
 
+function validateTranslationDuplicates(locales: LocaleKeys[]) {
+  for (const locale of locales) {
+    const duplicates = new Map<string, string[]>()
+
+    for (const entry of settingsSearchEntries) {
+      const title = entry.titleKey ? locale.values.get(entry.titleKey) : entry.title
+      if (!title)
+        continue
+      const id = `${entry.menu}|${entry.secondaryTitleKey ?? ''}|${entry.contextTitleKey ?? ''}|${title}`
+      duplicates.set(id, [...(duplicates.get(id) ?? []), entry.titleKey ?? entry.title ?? ''])
+    }
+
+    for (const [id, entries] of duplicates) {
+      if (entries.length > 1)
+        errors.push(`${locale.file} 同页同名搜索结果 ${id}：${entries.join(', ')}`)
+    }
+  }
+}
+
 function validateStaticKeys(locales: LocaleKeys[], targets: Set<string>) {
   const titles: StaticKey[] = []
   const dataKeys: StaticKey[] = []
+  const directTitles: StaticKey[] = []
   const usedAllowlistKeys = new Set<string>()
   const locatableKeys = new Set<string>()
+  const stronglyLocatableKeys = new Set<string>()
   const files = collectVueFiles(settingsDirectory)
+  const requiredStrongLocatorKeys = new Set([
+    'settings.auto_switch_list_layout_breakpoint',
+    'settings.video_card_cover_ratio_one_column',
+    'settings.video_card_cover_ratio_two_columns',
+    'settings.comment_reply_tree_mode.line_collapse_main',
+    'settings.comment_reply_tree_mode.line_keep_main',
+    'settings.comment_reply_tree_mode.indent_only',
+  ])
+  const requiredKeyedLocatorKeys = new Set([
+    'settings.original_moments_show_user_card',
+    'settings.original_moments_show_hot_search',
+    'settings.moments_show_user_card',
+    'settings.moments_show_hot_search',
+  ])
 
   for (const file of files) {
     const collected = collectTemplateKeys(file)
     titles.push(...collected.titles)
     dataKeys.push(...collected.dataKeys)
+    directTitles.push(...collected.directTitles)
     for (const key of collectSourceKeys(file))
       locatableKeys.add(key)
   }
 
-  for (const title of titles)
+  for (const title of titles) {
     locatableKeys.add(title.key)
-  for (const dataKey of dataKeys)
-    locatableKeys.add(dataKey.key)
-  for (const group of configurableShortcutsGroups) {
-    for (const shortcut of group.shortcuts)
-      locatableKeys.add(shortcut.nameKey)
+    stronglyLocatableKeys.add(title.key)
   }
-  for (const option of [...originalComponentOptions, ...pluginComponentOptions, ...pluginFilterOptions])
+  for (const directTitle of directTitles) {
+    locatableKeys.add(directTitle.key)
+    stronglyLocatableKeys.add(directTitle.key)
+  }
+  for (const dataKey of dataKeys) {
+    locatableKeys.add(dataKey.key)
+    stronglyLocatableKeys.add(dataKey.key)
+  }
+  for (const group of configurableShortcutsGroups) {
+    for (const shortcut of group.shortcuts) {
+      locatableKeys.add(shortcut.nameKey)
+      stronglyLocatableKeys.add(shortcut.nameKey)
+    }
+  }
+  for (const option of [...originalComponentOptions, ...pluginComponentOptions, ...pluginFilterOptions]) {
     locatableKeys.add(option.labelKey)
-  for (const component of topBarComponentDefinitions)
+    stronglyLocatableKeys.add(option.labelKey)
+  }
+  for (const component of topBarComponentDefinitions) {
     locatableKeys.add(component.i18nKey)
+    stronglyLocatableKeys.add(component.i18nKey)
+  }
 
   for (const title of titles) {
     if (targets.has(title.key))
@@ -335,7 +441,17 @@ function validateStaticKeys(locales: LocaleKeys[], targets: Set<string>) {
     if (locatorKey && !locatableKeys.has(locatorKey)
       && !(entry.fallbackTargetKey && locatableKeys.has(entry.fallbackTargetKey))) {
       errors.push(`条目 "${entryName}" 的定位 key "${locatorKey}" 在设置页中找不到对应标题、data-settings-key 或动态标签`)
+      continue
     }
+
+    if (locatorKey && requiredStrongLocatorKeys.has(locatorKey)
+      && !stronglyLocatableKeys.has(locatorKey)
+      && !(entry.fallbackTargetKey && stronglyLocatableKeys.has(entry.fallbackTargetKey))) {
+      errors.push(`条目 "${entryName}" 的定位 key "${locatorKey}" 只有源码弱定位；请补 data-settings-key、data-settings-title 或 fallbackTargetKey`)
+    }
+
+    if (locatorKey && requiredKeyedLocatorKeys.has(locatorKey) && !dataKeySet.has(locatorKey))
+      errors.push(`条目 "${entryName}" 的定位 key "${locatorKey}" 必须绑定 data-settings-key，避免同名标题命中错误分组`)
   }
 
   for (const key of Object.keys(SETTINGS_CATALOG_ALLOWLIST)) {
@@ -473,6 +589,7 @@ function main() {
   }
 
   const targets = validateEntries(locales)
+  validateTranslationDuplicates(locales)
   validateStaticKeys(locales, targets)
   validateDefinitions(locales, targets)
   validateRoutes(locales)
