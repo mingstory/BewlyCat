@@ -202,6 +202,7 @@ function handleToggleHomeTab(tab: Settings['homePageTabVisibilityList'][number],
       <SettingsItem
         :title="$t('settings.show_recommendation_mode_switcher')"
         :desc="$t('settings.show_recommendation_mode_switcher_desc')"
+        data-settings-key="settings.show_recommendation_mode_switcher"
         right-width="auto"
       >
         <Radio v-model="settings.showRecommendationModeSwitcher" />
