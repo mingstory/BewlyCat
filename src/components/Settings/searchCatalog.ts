@@ -420,6 +420,9 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
       'settings.video_card_layout': ['settings.video_card_shadow_reset'],
     },
     fallbackTargetKeysByTitleKey: {
+      'settings.auto_switch_list_layout_breakpoint': 'settings.auto_switch_list_layout',
+      'settings.video_card_cover_ratio_one_column': 'settings.video_card_cover_ratio',
+      'settings.video_card_cover_ratio_two_columns': 'settings.video_card_cover_ratio',
       'settings.video_card_shadow_curve': 'settings.video_card_layout',
       'settings.video_card_shadow_height': 'settings.video_card_layout',
       'settings.enable_video_ctrl_bar_on_video_card': 'settings.enable_video_preview',
@@ -871,6 +874,9 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
       'settings.enable_comment_reply_tree_container': 'settings.enable_comment_reply_tree_display',
       'settings.comment_reply_tree_container_height': 'settings.enable_comment_reply_tree_display',
       'settings.comment_reply_tree_mode.title': 'settings.enable_comment_reply_tree_display',
+      'settings.comment_reply_tree_mode.line_collapse_main': 'settings.enable_comment_reply_tree_display',
+      'settings.comment_reply_tree_mode.line_keep_main': 'settings.enable_comment_reply_tree_display',
+      'settings.comment_reply_tree_mode.indent_only': 'settings.enable_comment_reply_tree_display',
     },
   }),
   ...createEntries(vipFeaturesRoute, [
