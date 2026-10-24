@@ -276,6 +276,7 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
     'settings.search_page_mode_wallpaper_fixed',
   ], {
     fallbackTargetKeysByTitleKey: {
+      'settings.recommendation_mode_switcher_options': 'settings.show_recommendation_mode_switcher',
       'settings.settings_shared_with_the_search_page': 'settings.use_search_page_mode',
       'settings.search_page_mode_wallpaper_fixed': 'settings.use_search_page_mode',
     },
