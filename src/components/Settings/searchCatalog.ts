@@ -596,7 +596,11 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
   ...createEntries(listenVideoRoute, [
     'settings.enable_listen_video',
     'settings.show_listen_video_button',
-  ]),
+  ], {
+    fallbackTargetKeysByTitleKey: {
+      'settings.show_listen_video_button': 'settings.enable_listen_video',
+    },
+  }),
   ...createEntries(listenVideoRoute, [
     'settings.listen_video_cover_shape',
   ], {
@@ -605,6 +609,9 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
       'settings.listen_video_cover_shape_square',
       'settings.listen_video_cover_shape_rectangle',
     ],
+    fallbackTargetKeysByTitleKey: {
+      'settings.listen_video_cover_shape': 'settings.enable_listen_video',
+    },
   }),
   ...createEntries(listenVideoRoute, [
     'settings.listen_video_glow',
@@ -613,6 +620,9 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
       'settings.listen_video_glow_static',
       'settings.listen_video_glow_breathe',
     ],
+    fallbackTargetKeysByTitleKey: {
+      'settings.listen_video_glow': 'settings.enable_listen_video',
+    },
   }),
   ...createEntries(listenVideoRoute, [
     'settings.listen_video_glow_color',
@@ -621,6 +631,9 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
       'settings.listen_video_glow_color_theme',
       'settings.listen_video_glow_color_cover',
     ],
+    fallbackTargetKeysByTitleKey: {
+      'settings.listen_video_glow_color': 'settings.enable_listen_video',
+    },
   }),
   ...createEntries(listenVideoRoute, [
     'settings.listen_video_background',
@@ -629,6 +642,9 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
       'settings.listen_video_background_solid',
       'settings.listen_video_background_blur',
     ],
+    fallbackTargetKeysByTitleKey: {
+      'settings.listen_video_background': 'settings.enable_listen_video',
+    },
   }),
   ...createEntries(playerRoute, [
     'settings.video_player_scroll_mode.title',
