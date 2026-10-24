@@ -271,7 +271,7 @@ function getTranslatedSearchTerms(key: string): string[] {
   return collectTerms(tm(key))
 }
 
-function getSearchEntryText(entry: SettingsSearchEntry) {
+function getSearchEntryKeywordText(entry: SettingsSearchEntry) {
   const inferredKeywordKeys = entry.titleKey
     ? [`${entry.titleKey}_desc`, `${entry.titleKey}_opt`, `${entry.titleKey}_option`, `${entry.titleKey}_unit`]
     : []
@@ -279,18 +279,52 @@ function getSearchEntryText(entry: SettingsSearchEntry) {
     .flatMap(getTranslatedSearchTerms)
 
   // 菜单路径只用于结果定位，避免输入分类名时命中整组设置。
-  return [
-    getSearchEntryTitle(entry),
-    ...translatedKeywords,
-    ...(entry.keywords ?? []),
-  ].join(' ').toLocaleLowerCase()
+  return [...translatedKeywords, ...(entry.keywords ?? [])].join(' ').toLocaleLowerCase()
+}
+
+interface SearchIndexEntry {
+  entry: SettingsSearchEntry
+  titleText: string
+  keywordText: string
+  text: string
+  order: number
 }
 
 // 搜索文本只随 locale/目录变化重算，输入时复用，避免每次击键重复翻译全部条目。
-const searchIndex = computed(() => settingsSearchEntries.map(entry => ({
-  entry,
-  text: getSearchEntryText(entry),
-})))
+const searchIndex = computed<SearchIndexEntry[]>(() => settingsSearchEntries.map((entry, order) => {
+  const titleText = getSearchEntryTitle(entry).toLocaleLowerCase()
+  const keywordText = getSearchEntryKeywordText(entry)
+  return {
+    entry,
+    titleText,
+    keywordText,
+    text: `${titleText} ${keywordText}`,
+    order,
+  }
+}))
+
+function getSearchMatchScore(item: SearchIndexEntry, query: string, queryParts: string[]) {
+  let score = 0
+  if (item.titleText === query)
+    score += 200
+  else if (item.titleText.includes(query))
+    score += 40
+
+  for (const part of queryParts) {
+    if (item.titleText === part)
+      score += 120
+    else if (item.titleText.startsWith(part))
+      score += 80
+    else if (item.titleText.includes(part))
+      score += 50
+    else if (item.keywordText.startsWith(part))
+      score += 20
+    else
+      score += 10
+  }
+
+  return score
+}
 
 const searchResults = computed(() => {
   const query = searchQuery.value.trim().toLocaleLowerCase()
@@ -298,10 +332,13 @@ const searchResults = computed(() => {
     return []
 
   const queryParts = query.split(/\s+/).filter(Boolean)
-  return searchIndex.value
-    .filter(({ text }) => queryParts.every(part => text.includes(part)))
-    .slice(0, 12)
-    .map(({ entry }) => entry)
+  const matches = searchIndex.value
+    .filter(item => queryParts.every(part => item.text.includes(part)))
+    .map(item => ({ item, score: getSearchMatchScore(item, query, queryParts) }))
+
+  // 标题精确/前缀命中优先于标题包含，再到关键词命中；同分保持目录顺序。
+  matches.sort((a, b) => b.score - a.score || a.item.order - b.item.order)
+  return matches.map(({ item }) => item.entry)
 })
 
 const activeSearchResultIndex = ref(-1)
