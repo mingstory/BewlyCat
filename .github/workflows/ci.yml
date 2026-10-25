@@ -61,6 +61,9 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
 
+      - name: Check locale files
+        run: node .github/scripts/locale-check.mjs
+
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
