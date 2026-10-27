@@ -131,10 +131,56 @@ function handleGlobalMouseMove(event: MouseEvent) {
 
 const hoveringDockItem = reactive<HoveringDockItem>({
   themeMode: false,
-  settings: false,
 })
 const currentDockItems = ref<DockItem[]>([])
-const activatedDockItem = ref<DockItem>()
+
+type DockActionPulse = 'refresh' | 'back-to-top' | 'history'
+// 覆盖 dock 缩放过渡（300ms），避免布局切换造成的瞬时 mouseleave 清掉抑制
+const CLICK_SUPPRESSION_RELEASE_DELAY = 350
+
+function triggerDockIconClickFeedback(event: MouseEvent) {
+  const button = event.currentTarget
+  if (!(button instanceof HTMLElement))
+    return
+  const icon = Array.from(button.querySelectorAll('.dock-item-icon, .dock-edit-icon, .dock-theme-icon'))
+    .find(el => getComputedStyle(el).display !== 'none')
+  button.style.setProperty('--dock-click-rebound-from', icon ? getComputedStyle(icon).transform : 'none')
+  button.classList.remove('dock-icon-click-rebound')
+  void button.offsetWidth
+  button.classList.add('dock-icon-click-rebound', 'dock-icon-click-suppressed')
+}
+
+function releaseDockIconClickFeedback(event: MouseEvent | FocusEvent) {
+  const button = event.currentTarget
+  if (!(button instanceof HTMLElement))
+    return
+  window.setTimeout(() => {
+    if (!button.matches(':hover, :focus-visible'))
+      button.classList.remove('dock-icon-click-rebound', 'dock-icon-click-suppressed')
+  }, CLICK_SUPPRESSION_RELEASE_DELAY)
+}
+
+function pulseDockAction(event: MouseEvent, pulse: DockActionPulse) {
+  const button = event.currentTarget
+  if (!(button instanceof HTMLElement))
+    return
+  button.classList.remove('dock-action-pulse-refresh', 'dock-action-pulse-back-to-top', 'dock-action-pulse-history')
+  void button.offsetWidth
+  button.classList.add(`dock-action-pulse-${pulse}`)
+}
+
+function handleDockAnimationEnd(event: AnimationEvent) {
+  const target = event.target
+  if (!(target instanceof Element))
+    return
+  const button = target.closest<HTMLElement>('.dock-item, .back-to-top-or-refresh-btn')
+  if (!button)
+    return
+  if (event.animationName === 'dock-icon-click-rebound')
+    button.classList.remove('dock-icon-click-rebound')
+  if (button.classList.contains('back-to-top-or-refresh-btn'))
+    button.classList.remove('dock-action-pulse-refresh', 'dock-action-pulse-back-to-top', 'dock-action-pulse-history')
+}
 
 const animeEyeMaskId = `dock-anime-eye-mask-${useId()}`
 
@@ -265,8 +311,15 @@ function computeDockItem(): DockItem[] {
 }
 
 function handleDockThemeClick(event: MouseEvent) {
-  if (!isLayoutEditing.value)
+  if (!isLayoutEditing.value) {
+    triggerDockIconClickFeedback(event)
     toggleDark(event)
+  }
+}
+
+function handleDockThemeLeave(event: MouseEvent) {
+  hoveringDockItem.themeMode = false
+  releaseDockIconClickFeedback(event)
 }
 
 function toggleHideDock(hide: boolean) {
@@ -303,36 +356,51 @@ function handleDockItemClick($event: MouseEvent, dockItem: DockItem) {
     return
 
   if ($event.ctrlKey || $event.metaKey) {
-    openDockItemInNewTab(dockItem)
+    openDockItemInNewTab(dockItem, $event)
     return
   }
 
-  activatedDockItem.value = dockItem
+  triggerDockIconClickFeedback($event)
   emit('dockItemClick', dockItem)
 }
 
-function openDockItemInNewTab(dockItem: DockItem) {
+function openDockItemInNewTab(dockItem: DockItem, event?: MouseEvent) {
   if (isLayoutEditing.value)
     return
 
-  activatedDockItem.value = dockItem
+  if (event)
+    triggerDockIconClickFeedback(event)
   openLinkToNewTab(`https://www.bilibili.com/?page=${dockItem.page}`)
 }
 
-function handleBackToTopOrRefresh(action: 'backToTop' | 'refresh' | 'auto' = 'auto') {
+function handleDockEditClick(event: MouseEvent) {
+  triggerDockIconClickFeedback(event)
+  toggleLayoutEditMode('dock')
+}
+
+function handleBackToTopOrRefresh(action: 'backToTop' | 'refresh' | 'auto' = 'auto', event?: MouseEvent) {
   if (action === 'backToTop') {
     emit('backToTop')
+    if (event)
+      pulseDockAction(event, 'back-to-top')
   }
   else if (action === 'refresh') {
-    if (canRefreshCurrentPage.value)
+    if (canRefreshCurrentPage.value) {
       emit('refresh')
+      if (event)
+        pulseDockAction(event, 'refresh')
+    }
   }
   else {
     if ((reachTop.value || !backToTopButtonEnabled.value) && canRefreshCurrentPage.value) {
       emit('refresh')
+      if (event)
+        pulseDockAction(event, 'refresh')
     }
     else if (backToTopButtonEnabled.value) {
       emit('backToTop')
+      if (event)
+        pulseDockAction(event, 'back-to-top')
     }
   }
 }
@@ -350,12 +418,16 @@ function handleForwardRefresh() {
 }
 
 // 添加统一的前进后退处理方法
-function handleHistoryNavigation() {
+function handleHistoryNavigation(event?: MouseEvent) {
   if (showUndo.value) {
     handleUndoRefresh()
+    if (event)
+      pulseDockAction(event, 'history')
   }
   else if (showForward.value) {
     handleForwardRefresh()
+    if (event)
+      pulseDockAction(event, 'history')
   }
 }
 
@@ -607,6 +679,7 @@ onUnmounted(() => {
     >
       <div
         class="dock-content-inner"
+        @animationend="handleDockAnimationEnd"
       >
         <template v-for="dockItem in currentDockItems" :key="dockItem.page">
           <Tooltip :content="$t(dockItem.i18nKey)" :placement="tooltipPlacement">
@@ -625,7 +698,9 @@ onUnmounted(() => {
                 },
               ]"
               @click="handleDockItemClick($event, dockItem)"
-              @click.middle="openDockItemInNewTab(dockItem)"
+              @click.middle="openDockItemInNewTab(dockItem, $event)"
+              @mouseleave="releaseDockIconClickFeedback"
+              @blur="releaseDockIconClickFeedback"
             >
               <span class="dock-item-icon-wrap">
                 <template v-if="dockItem.page === AppPage.Anime">
@@ -735,18 +810,19 @@ onUnmounted(() => {
               pointer-events-auto
               @click="handleDockThemeClick"
               @mouseenter="hoveringDockItem.themeMode = true"
-              @mouseleave="hoveringDockItem.themeMode = false"
+              @mouseleave="handleDockThemeLeave"
+              @blur="releaseDockIconClickFeedback"
             >
               <Transition name="fade">
                 <div v-show="hoveringDockItem.themeMode" absolute>
-                  <Icon v-if="isDark" icon="line-md:sunny-outline-to-moon-loop-transition" />
-                  <Icon v-else icon="line-md:moon-alt-to-sunny-outline-loop-transition" />
+                  <Icon v-if="isDark" icon="line-md:sunny-outline-to-moon-loop-transition" class="dock-theme-icon" />
+                  <Icon v-else icon="line-md:moon-alt-to-sunny-outline-loop-transition" class="dock-theme-icon" />
                 </div>
               </Transition>
               <Transition name="fade">
                 <div v-show="!hoveringDockItem.themeMode" absolute>
-                  <Icon v-if="isDark" icon="line-md:sunny-outline-to-moon-transition" />
-                  <Icon v-else icon="line-md:moon-to-sunny-outline-transition" />
+                  <Icon v-if="isDark" icon="line-md:sunny-outline-to-moon-transition" class="dock-theme-icon" />
+                  <Icon v-else icon="line-md:moon-to-sunny-outline-transition" class="dock-theme-icon" />
                 </div>
               </Transition>
             </button>
@@ -779,7 +855,9 @@ onUnmounted(() => {
             data-layout-edit-control
             :class="{ active: isLayoutEditing }"
             :aria-pressed="isLayoutEditing"
-            @click="toggleLayoutEditMode('dock')"
+            @click="handleDockEditClick"
+            @mouseleave="releaseDockIconClickFeedback"
+            @blur="releaseDockIconClickFeedback"
           >
             <Icon
               :icon="isLayoutEditing ? 'mingcute:check-line' : 'mingcute:edit-3-line'"
@@ -839,7 +917,7 @@ onUnmounted(() => {
                 v-if="(key === 1 && canRefreshCurrentPage) || (key === 2 && backToTopButtonEnabled && !reachTop)"
                 class="back-to-top-or-refresh-btn"
                 :class="{ inactive: hoveringDockItem.themeMode && isDark }"
-                @click="handleBackToTopOrRefresh(key === 1 ? 'refresh' : 'backToTop')"
+                @click="handleBackToTopOrRefresh(key === 1 ? 'refresh' : 'backToTop', $event)"
               >
                 <Icon
                   v-if="key === 1"
@@ -862,7 +940,7 @@ onUnmounted(() => {
             v-if="backToTopButtonEnabled || canRefreshCurrentPage"
             class="back-to-top-or-refresh-btn"
             :class="{ inactive: hoveringDockItem.themeMode && isDark }"
-            @click="handleBackToTopOrRefresh('auto')"
+            @click="handleBackToTopOrRefresh('auto', $event)"
           >
             <Transition name="fade">
               <Icon
@@ -886,7 +964,7 @@ onUnmounted(() => {
             v-if="showUndoForwardActions"
             class="back-to-top-or-refresh-btn"
             :class="{ inactive: hoveringDockItem.themeMode && isDark }"
-            @click="handleHistoryNavigation"
+            @click="handleHistoryNavigation($event)"
           >
             <Icon
               v-if="showUndo"
@@ -1242,6 +1320,18 @@ onUnmounted(() => {
   animation: dock-icon-spin 650ms var(--bew-ease-in-out);
 }
 
+.dock-icon-click-rebound :is(.dock-item-icon, .dock-theme-icon, .dock-edit-icon) {
+  animation: dock-icon-click-rebound 320ms var(--bew-ease-emphasized, cubic-bezier(0.34, 1.3, 0.64, 1)) !important;
+}
+
+.dock-icon-click-suppressed:not(.dock-icon-click-rebound) :is(.dock-item-icon, .dock-theme-icon, .dock-edit-icon) {
+  animation-name: none !important;
+}
+
+.dock-icon-click-suppressed :is(.dock-anime-eyes, .dock-anime-wave, .dock-favorites-sparkle) {
+  animation-name: none !important;
+}
+
 .dock-anime-signal {
   position: absolute;
   inset: -4px;
@@ -1266,6 +1356,18 @@ onUnmounted(() => {
 
 .dock-edit-button:is(:hover, :focus-visible) .dock-edit-icon {
   animation: dock-icon-wiggle 520ms var(--bew-ease-standard, cubic-bezier(0.22, 0.61, 0.36, 1));
+}
+
+.back-to-top-or-refresh-btn.dock-action-pulse-refresh .dock-action-icon {
+  animation: dock-icon-spin 600ms var(--bew-ease-in-out);
+}
+
+.back-to-top-or-refresh-btn.dock-action-pulse-back-to-top .dock-action-icon {
+  animation: dock-action-back-to-top 450ms var(--bew-ease-out);
+}
+
+.back-to-top-or-refresh-btn.dock-action-pulse-history .dock-action-icon {
+  animation: dock-action-history 520ms var(--bew-ease-emphasized, cubic-bezier(0.34, 1.3, 0.64, 1));
 }
 
 .dock-favorites-sparkle {
@@ -1397,6 +1499,21 @@ onUnmounted(() => {
   }
 }
 
+@keyframes dock-icon-click-rebound {
+  0% {
+    transform: var(--dock-click-rebound-from, scale(1));
+  }
+  35% {
+    transform: scale(0.9);
+  }
+  70% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 @keyframes dock-icon-spin {
   0% {
     transform: rotate(0deg);
@@ -1422,10 +1539,39 @@ onUnmounted(() => {
   }
 }
 
+@keyframes dock-action-back-to-top {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  35% {
+    transform: translateY(-4px);
+  }
+  65% {
+    transform: translateY(1px);
+  }
+}
+
+@keyframes dock-action-history {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+  30% {
+    transform: scale(0.85) rotate(-20deg);
+  }
+  65% {
+    transform: scale(1.08) rotate(6deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dock-item:is(:hover, :focus-visible)
     :is(.dock-item-icon, .dock-anime-wave, .dock-anime-eyes, .dock-favorites-sparkle),
-  .dock-edit-button:is(:hover, :focus-visible) .dock-edit-icon {
+  .dock-edit-button:is(:hover, :focus-visible) .dock-edit-icon,
+  .back-to-top-or-refresh-btn:is(.dock-action-pulse-refresh, .dock-action-pulse-back-to-top, .dock-action-pulse-history)
+    .dock-action-icon,
+  .dock-icon-click-rebound :is(.dock-item-icon, .dock-theme-icon, .dock-edit-icon) {
     animation: none !important;
   }
 }
